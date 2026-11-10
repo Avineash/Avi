@@ -1,0 +1,15 @@
+# Runs at boot. When the car powers the USB port, the Pi boots and this starts.
+[Unit]
+Description=Car companion
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/Avi
+EnvironmentFile=/home/pi/Avi/.env
+ExecStart=/home/pi/Avi/.venv/bin/python -m companion.main
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
