@@ -1,4 +1,4 @@
-"""Trigger the navigation shortcut on the phone."""
+"""Trigger the navigation shortcut on the iPhone."""
 from urllib.parse import quote_plus
 
 import requests
@@ -17,24 +17,16 @@ def maps_url(query: str, app: str = "google", mode: str = "driving") -> str:
 
 
 def send_to_phone(query: str, mode: str, cfg: Config) -> None:
-    url = maps_url(query, cfg.maps_app, mode)
-    if cfg.phone_backend == "pushcut":
-        # iPhone: Pushcut runs your Shortcut, passing the maps URL as its input.
-        # Needs Pushcut's Automation Server enabled on the phone.
-        r = requests.post(
-            "https://api.pushcut.io/v1/execute",
-            params={"shortcut": cfg.pushcut_shortcut, "input": url},
-            headers={"API-Key": cfg.pushcut_api_key},
-            timeout=10,
-        )
-    elif cfg.phone_backend == "ntfy":
-        # Android: Tasker/MacroDroid reacts to the ntfy message and opens the URL.
-        r = requests.post(
-            f"{cfg.ntfy_server}/{cfg.ntfy_topic}",
-            data=url.encode(),
-            headers={"Title": "navigate"},
-            timeout=10,
-        )
-    else:
-        raise ValueError(f"unknown PHONE_BACKEND {cfg.phone_backend!r}")
+    """Run the iPhone Shortcut via Pushcut, passing the maps URL as its input.
+
+    Needs the Pushcut app with its Automation Server enabled on the phone.
+    """
+    if not cfg.pushcut_api_key:
+        raise RuntimeError("PUSHCUT_API_KEY is not set")
+    r = requests.post(
+        "https://api.pushcut.io/v1/execute",
+        params={"shortcut": cfg.pushcut_shortcut, "input": maps_url(query, cfg.maps_app, mode)},
+        headers={"API-Key": cfg.pushcut_api_key},
+        timeout=10,
+    )
     r.raise_for_status()

@@ -6,13 +6,9 @@ from dataclasses import dataclass
 class Config:
     model: str = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
     whisper_model: str = os.getenv("WHISPER_MODEL", "base.en")
-    # "pushcut" (iPhone) or "ntfy" (Android + Tasker/MacroDroid)
-    phone_backend: str = os.getenv("PHONE_BACKEND", "pushcut")
     pushcut_api_key: str = os.getenv("PUSHCUT_API_KEY", "")
     pushcut_shortcut: str = os.getenv("PUSHCUT_SHORTCUT", "Navigate")
-    ntfy_topic: str = os.getenv("NTFY_TOPIC", "")
-    ntfy_server: str = os.getenv("NTFY_SERVER", "https://ntfy.sh")
-    maps_app: str = os.getenv("MAPS_APP", "google")  # google | apple | waze
+    maps_app: str = os.getenv("MAPS_APP", "apple")  # google | apple | waze
     home_address: str = os.getenv("HOME_ADDRESS", "")
     work_address: str = os.getenv("WORK_ADDRESS", "")
     max_listen_seconds: float = float(os.getenv("MAX_LISTEN_SECONDS", "8"))

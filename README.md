@@ -6,7 +6,7 @@ works out the destination with Claude, and triggers a shortcut on your phone tha
 ```
 car USB power -> Pi boots -> systemd starts companion
   mic -> faster-whisper (local STT) -> Claude (destination) -> confirm by voice
-  -> Pushcut (iPhone Shortcut) or ntfy (Android Tasker) -> Maps app opens with directions
+  -> Pushcut (runs your iPhone Shortcut) -> Maps app opens with directions
 ```
 
 ## Hardware
@@ -23,13 +23,12 @@ cp .env.example .env   # fill in keys
 sudo cp deploy/companion.service /etc/systemd/system/ && sudo systemctl enable companion
 ```
 
-### Phone side
-- **iPhone:** make a Shortcut named `Navigate` that takes the text input (a maps URL) and runs "Open URLs".
-  Install Pushcut, enable its Automation Server, and put your API key in `.env`.
-- **Android:** set `PHONE_BACKEND=ntfy`, subscribe the ntfy app to your topic, and have Tasker or
-  MacroDroid open the received URL when a message arrives.
+### Phone side (iPhone)
+1. In Shortcuts, create a Shortcut named `Navigate`: take the shortcut input (a maps URL) and run "Open URLs" on it.
+2. Install Pushcut, enable its Automation Server so it can run Shortcuts without a tap, and copy your API key into `.env`.
+3. `MAPS_APP=apple` opens Apple Maps; `google` and `waze` open those apps' links if installed.
 
 ## Status
 Prototype. Unit tests cover the maps URL building only (`pytest tests`). The microphone, Whisper,
-Claude call and Pushcut/ntfy calls were written but not run end to end, because this build environment has no
+Claude call and Pushcut call were written but not run end to end, because this build environment has no
 hardware or credentials. Expect to tune `ENERGY_THRESHOLD` for your car's noise level.
