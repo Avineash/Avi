@@ -10,10 +10,10 @@ car USB power -> Pi boots -> systemd starts companion
 ```
 
 ## Hardware
-- Raspberry Pi Zero 2 W (or any Pi) plus a USB mic and a small speaker or the car's AUX input.
-- Plug it into a USB port that is only powered with the ignition, or use a switched 12V-to-USB adapter.
-  Power on is the wake signal, so no extra sensing code is needed.
-- Caveat: cutting power on a Pi can corrupt the SD card. Use a read-only root filesystem or a small UPS/supercap board.
+- **Raspberry Pi 5 + AI HAT** (the AI HAT needs the Pi 5's PCIe connector), a USB mic, and a small speaker or the car's AUX input.
+- **Power:** a Pi 5 wants 5V/5A, which a normal car USB port can't supply. Use a 12V-to-5V buck converter rated for 5A (for example a hardwire kit), wired to an ignition-switched fuse-box tap. The Pi then boots when the car starts and the service starts with it.
+- **Shutdown:** cutting power can corrupt the SD card. Use an NVMe or read-only root, or a power board that signals a clean shutdown when ignition goes off.
+- **AI HAT:** the Hailo chip on the HAT is mainly for vision models. This prototype runs speech-to-text on the Pi 5 CPU with `faster-whisper` (set `WHISPER_MODEL=small.en` for better accuracy; `base.en` is faster). The HAT is not used yet. Running Whisper on it needs the Hailo toolchain and a supported model, which I haven't verified.
 
 ## Setup
 ```
