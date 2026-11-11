@@ -22,7 +22,9 @@ class Config:
     max_listen_seconds: float = float(_f("MAX_LISTEN_SECONDS", "8"))
     silence_seconds: float = float(_f("SILENCE_SECONDS", "1.2"))
     energy_threshold: float = float(_f("ENERGY_THRESHOLD", "0.01"))
-    confirm: bool = _f("CONFIRM_DESTINATION", "1") == "1"
+    confirm: bool = _f("CONFIRM_DESTINATION", "0") == "1"  # needs a spoken "yes"; off by default
+    sounds_dir: str = _f("SOUNDS_DIR", "sounds")  # optional WAV overrides
+    volume: float = float(_f("VOLUME", "0.8"))
     # Faces
     people_file: str = _f("PEOPLE_FILE", "data/people.json")
     face_threshold: float = float(_f("FACE_THRESHOLD", "0.40"))  # cosine similarity; higher = stricter

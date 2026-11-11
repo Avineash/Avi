@@ -2,15 +2,16 @@
 import logging
 import time
 
-from . import audio, phone
+from . import audio, phone, sounds
 from .camera import Camera
 from .config import Config
 from .faces import FaceRecognizer, Person, load_people
 from .intent import parse_destination
-from .phrases import YES, say
 from .stt import Transcriber
 
 log = logging.getLogger("companion")
+YES = {"yes", "yeah", "yep", "correct", "go", "sure", "ok", "okay",
+       "ஆமாம்", "ஆம்", "ஆமா", "சரி", "சரிதான்"}
 
 
 def listen(cfg: Config, stt: Transcriber, language: str | None) -> str:
@@ -20,34 +21,37 @@ def listen(cfg: Config, stt: Transcriber, language: str | None) -> str:
     return text
 
 
+def beep(event: str, cfg: Config) -> None:
+    sounds.play(event, cfg.sounds_dir, cfg.volume)
+
+
 def handle_driver(person: Person, cfg: Config, stt: Transcriber) -> None:
-    lang = person.language or "en"
-    audio.speak(say("greet", lang, name=person.name), lang)
+    beep("greet", cfg)
     for _ in range(3):
+        beep("listen", cfg)
         text = listen(cfg, stt, person.language)
         if not text:
-            audio.speak(say("retry", lang), lang)
+            beep("huh", cfg)
             continue
         dest = parse_destination(text, cfg)
-        lang = dest.language
         if not dest.understood or not dest.query:
-            audio.speak(dest.reply, lang)
+            beep("huh", cfg)
             continue
         if cfg.confirm:
-            audio.speak(say("confirm", lang, place=dest.query), lang)
+            beep("ask", cfg)  # you can't hear the destination, so check the map that opens on your phone
             answer = listen(cfg, stt, person.language).lower().strip(" .!?")
             if not answer or answer.split(" ")[0].strip(".,!?") not in YES:
-                audio.speak(say("again", lang), lang)
+                beep("huh", cfg)
                 continue
         try:
             phone.send_to_phone(dest.query, dest.mode, cfg)
         except Exception:
             log.exception("phone trigger failed")
-            audio.speak(say("phone_fail", lang), lang)
+            beep("error", cfg)
             return
-        audio.speak(dest.reply, lang)
+        beep("ok", cfg)
         return
-    audio.speak(say("giveup", lang), lang)
+    beep("bye", cfg)
 
 
 def handle_passenger(person: Person, cfg: Config) -> None:

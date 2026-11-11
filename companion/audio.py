@@ -1,5 +1,4 @@
-"""Microphone capture with simple silence detection, plus offline speech output."""
-import subprocess
+"""Microphone capture with simple silence detection."""
 import time
 
 import numpy as np
@@ -27,9 +26,3 @@ def record_until_silence(max_seconds: float, silence_seconds: float, threshold: 
                 if quiet_blocks * 0.1 >= silence_seconds:
                     break
     return np.concatenate(chunks) if chunks else np.zeros(0, dtype="float32")
-
-
-def speak(text: str, lang: str | None = "en") -> None:
-    """Offline TTS via espeak-ng (apt install espeak-ng). Supports English and Tamil."""
-    voice = "ta" if lang == "ta" else "en"
-    subprocess.run(["espeak-ng", "-v", voice, "-s", "165", text], check=False)

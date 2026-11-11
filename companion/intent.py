@@ -13,9 +13,7 @@ class Destination(BaseModel):
         default=None,
         description="Search string or address to pass to a maps app, e.g. 'Bunnings Marrickville'.",
     )
-    language: Literal["en", "ta"] = Field(default="en", description="Language of the driver's request: en or ta (Tamil).")
     mode: Literal["driving", "walking", "transit"] = "driving"
-    reply: str = Field(description="One short sentence to say back to the driver, in the same language as the request.")
 
 
 SYSTEM = (
@@ -24,8 +22,7 @@ SYSTEM = (
     "The driver speaks a destination after starting the car. "
     "Extract where they want to go. Resolve 'home' and 'work' using the saved addresses "
     "when given. Speech-to-text may have errors; fix obvious ones. If the request is not a "
-    "navigation request or is too vague to search, set understood=false and ask a short "
-    "clarifying question in reply. Keep replies under 15 words."
+    "navigation request or is too vague to search, set understood=false."
 )
 
 
@@ -41,5 +38,5 @@ def parse_destination(transcript: str, cfg: Config, client: anthropic.Anthropic 
         output_format=Destination,
     )
     if response.stop_reason == "refusal" or response.parsed_output is None:
-        return Destination(understood=False, reply="Sorry, I didn't catch that.")
+        return Destination(understood=False)
     return response.parsed_output
