@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Car Companion</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --text:#15171a; --muted:#6b7280; --accent:#f5b400; --accent-text:#1a1400;
+          --ok:#1a9d55; --bad:#d23b3b; --line:#e3e5ea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1114; --card:#1a1d22; --text:#eceef1; --muted:#9097a3; --line:#2a2e35; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 -apple-system, system-ui, sans-serif;
+         padding:max(16px, env(safe-area-inset-top)) 16px 40px; max-width:560px; margin-inline:auto; }
+  h1 { font-size:20px; margin:4px 0 12px; display:flex; align-items:center; gap:8px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:22px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:10px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); display:inline-block; }
+  .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:3px 10px; font-size:14px; }
+  input, textarea, select { width:100%; font:inherit; padding:12px; border-radius:10px; border:1px solid var(--line);
+         background:var(--bg); color:var(--text); }
+  textarea { min-height:70px; resize:vertical; }
+  button, .btn { font:inherit; font-weight:600; border:0; border-radius:12px; padding:13px 16px; cursor:pointer;
+         background:var(--accent); color:var(--accent-text); text-decoration:none; display:inline-block; text-align:center; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); font-weight:500; }
+  button.small { padding:6px 10px; font-size:14px; }
+  .grow { flex:1; }
+  .muted { color:var(--muted); font-size:14px; }
+  .banner { border-color:var(--accent); }
+  .event { font-size:14px; padding:6px 0; border-top:1px solid var(--line); display:flex; gap:8px; }
+  .event:first-child { border-top:0; }
+  .err { color:var(--bad); font-size:14px; margin:6px 0 0; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<h1>🤖 Car Companion <span id="cam" class="dot" title="camera"></span></h1>
+
+<div id="gate" class="card" hidden>
+  <p>Enter the access token from your Pi's <code>.env</code> file.</p>
+  <input id="tok" type="password" placeholder="PAGE_TOKEN" autocomplete="off">
+  <p class="row"><button id="tokgo">Connect</button></p>
+  <p id="gateerr" class="err"></p>
+</div>
+
+<div id="app" hidden>
+  <div id="prompt" class="card banner" hidden><strong id="prompttext"></strong></div>
+
+  <h2>In the car</h2>
+  <div class="card"><div id="cabin" class="row"></div><div id="unknown" class="muted"></div></div>
+
+  <div id="sugwrap" hidden>
+    <h2>Passenger suggestions</h2>
+    <div id="suggestions"></div>
+  </div>
+
+  <h2>Where to?</h2>
+  <div class="card">
+    <textarea id="dest" placeholder="Type or dictate a destination (English or தமிழ்)" aria-label="Destination"></textarea>
+    <div class="row" style="margin-top:8px">
+      <select id="lang" style="width:auto" aria-label="Speech language">
+        <option value="en-AU">English</option><option value="ta-IN">தமிழ்</option>
+      </select>
+      <button id="mic" class="ghost" hidden>🎤 Speak</button>
+      <span class="grow"></span>
+      <button id="go">Go</button>
+    </div>
+    <p class="muted" id="micnote">Tip: you can also use the microphone key on the iPhone keyboard.</p>
+    <p id="desterr" class="err" hidden></p>
+    <div id="result" hidden class="row" style="margin-top:8px">
+      <span id="resulttext" class="grow"></span>
+      <a id="resultlink" class="btn" target="_blank" rel="noopener">Open Google Maps</a>
+    </div>
+  </div>
+
+  <h2>People</h2>
+  <div id="people"></div>
+  <details class="card">
+    <summary>Add a person</summary>
+    <p class="muted">Only add people who have agreed. Choose 5 to 15 clear photos of their face. Photos are not kept, only a face fingerprint.</p>
+    <input id="pname" placeholder="Name" maxlength="40" style="margin-bottom:8px">
+    <input id="paddr" placeholder="Home address (for passenger suggestions)" style="margin-bottom:8px">
+    <select id="plang" style="margin-bottom:8px">
+      <option value="">Language: auto</option><option value="en">English</option><option value="ta">தமிழ்</option>
+    </select>
+    <input id="pphotos" type="file" accept="image/*" multiple style="margin-bottom:8px">
+    <button id="padd">Enrol</button>
+    <p id="perr" class="err" hidden></p>
+  </details>
+
+  <h2>Activity</h2>
+  <div class="card" id="events"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let token = store.get("token") || "";
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k === "onclick" ? e.onclick = v : e.setAttribute(k, v);
+  for (const kid of kids) e.append(kid);
+  return e;
+}
+function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
+
+async function api(path, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), "X-Token": token };
+  const r = await fetch(path, opts);
+  if (r.status === 401) { showGate("Wrong token."); throw new Error("auth"); }
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || "Request failed (" + r.status + ")");
+  return body;
+}
+function showGate(msg) { $("gate").hidden = false; $("app").hidden = true; $("gateerr").textContent = msg || ""; }
+
+$("tokgo").onclick = () => { token = $("tok").value.trim(); store.set("token", token); poll(); };
+
+function render(s) {
+  $("gate").hidden = true; $("app").hidden = false;
+  $("cam").className = "dot " + (s.camera_ok === true ? "ok" : s.camera_ok === false ? "bad" : "");
+  $("prompt").hidden = !s.prompt;
+  if (s.prompt) $("prompttext").textContent = "Hi " + s.prompt.name + ". Where to?";
+
+  $("cabin").replaceChildren(...(s.cabin.length ? s.cabin.map(c =>
+      el("span", { class: "chip" }, (c.seat === "driver" ? "🚗 " : "🧍 ") + c.name)) : [el("span", { class: "muted" }, "Nobody recognised")]));
+  $("unknown").textContent = s.unknown_faces ? s.unknown_faces + " unrecognised face(s) (nothing stored)" : "";
+
+  $("sugwrap").hidden = !s.suggestions.length;
+  $("suggestions").replaceChildren(...s.suggestions.map(g => el("div", { class: "card banner" },
+      el("strong", {}, g.name + " just got in"),
+      el("div", { class: "muted" }, "Navigate to " + g.address + "?"),
+      el("div", { class: "row", style: "margin-top:10px" },
+        el("a", { class: "btn grow", href: safeUrl(g.url), target: "_blank", rel: "noopener",
+                  onclick: () => api("/api/suggestions/" + g.id + "/opened", { method: "POST" }).catch(() => {}) }, "Navigate"),
+        el("button", { class: "ghost", onclick: () => api("/api/suggestions/" + g.id + "/dismissed", { method: "POST" }).then(poll) }, "Ignore")))));
+
+  $("people").replaceChildren(...s.people.map(p => el("div", { class: "card row" },
+      el("div", { class: "grow" }, el("strong", {}, p.name),
+        el("div", { class: "muted" }, (p.address || "no address") + " · " + p.photos + " photos · " + (p.language || "auto"))),
+      el("button", { class: "ghost small", onclick: () => editPerson(p) }, "Edit"),
+      el("button", { class: "ghost small", onclick: () => removePerson(p.name) }, "Remove"))));
+
+  $("events").replaceChildren(...(s.events.length ? s.events.map(e => el("div", { class: "event" },
+      el("span", { class: "muted" }, new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })),
+      el("span", {}, e.text))) : [el("span", { class: "muted" }, "Nothing yet")]));
+}
+
+async function poll() {
+  try { render(await api("/api/state")); } catch (e) { if (e.message !== "auth" && token) $("cam").className = "dot bad"; }
+}
+
+async function sendDestination() {
+  const text = $("dest").value.trim();
+  if (!text) return;
+  $("desterr").hidden = true; $("result").hidden = true; $("go").disabled = true;
+  try {
+    const r = await api("/api/destination", { method: "POST", headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ text }) });
+    if (!r.understood) { $("desterr").textContent = "Didn't catch that. Try a place name or address."; $("desterr").hidden = false; }
+    else { $("resulttext").textContent = r.query; $("resultlink").href = safeUrl(r.url); $("result").hidden = false; }
+  } catch (e) { $("desterr").textContent = e.message; $("desterr").hidden = false; }
+  $("go").disabled = false; poll();
+}
+$("go").onclick = sendDestination;
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  $("mic").hidden = false;
+  $("mic").onclick = () => {
+    const rec = new SR(); rec.lang = $("lang").value; rec.interimResults = false;
+    $("mic").textContent = "Listening...";
+    rec.onresult = ev => { $("dest").value = ev.results[0][0].transcript; sendDestination(); };
+    rec.onend = () => { $("mic").textContent = "🎤 Speak"; };
+    rec.onerror = () => { $("micnote").textContent = "Speech input isn't available here. Type, or use the keyboard microphone."; };
+    rec.start();
+  };
+}
+
+async function editPerson(p) {
+  const address = prompt("Home address for " + p.name, p.address || "");
+  if (address === null) return;
+  await api("/api/people/" + encodeURIComponent(p.name), { method: "PATCH", headers: { "Content-Type": "application/json" },
+                                                           body: JSON.stringify({ address }) });
+  poll();
+}
+async function removePerson(name) {
+  if (confirm("Remove " + name + " and their face data?")) { await api("/api/people/" + encodeURIComponent(name), { method: "DELETE" }); poll(); }
+}
+$("padd").onclick = async () => {
+  const fd = new FormData();
+  fd.append("name", $("pname").value); fd.append("address", $("paddr").value); fd.append("language", $("plang").value);
+  for (const f of $("pphotos").files) fd.append("photos", f);
+  $("perr").hidden = true; $("padd").disabled = true; $("padd").textContent = "Working...";
+  try { await api("/api/people", { method: "POST", body: fd }); $("pname").value = $("paddr").value = ""; $("pphotos").value = ""; }
+  catch (e) { $("perr").textContent = e.message; $("perr").hidden = false; }
+  $("padd").disabled = false; $("padd").textContent = "Enrol"; poll();
+};
+
+if (!token) showGate(""); else poll();
+setInterval(() => { if (token && !document.hidden) poll(); }, 2000);
+</script>
+</body>
+</html>

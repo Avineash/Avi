@@ -17,7 +17,7 @@ class Destination(BaseModel):
 
 
 SYSTEM = (
-    "You are a car voice companion. The driver may speak English, Tamil or a mix. "
+    "You are a car companion. The driver types or dictates in English, Tamil or a mix. "
     "Write query in the form most likely to be found on Google Maps (usually the English spelling of well-known places). "
     "The driver speaks a destination after starting the car. "
     "Extract where they want to go. Resolve 'home' and 'work' using the saved addresses "
@@ -26,9 +26,9 @@ SYSTEM = (
 )
 
 
-def parse_destination(transcript: str, cfg: Config, client: anthropic.Anthropic | None = None) -> Destination:
+def parse_destination(transcript: str, cfg: Config, client: anthropic.Anthropic | None = None, home: str = "") -> Destination:
     client = client or anthropic.Anthropic()
-    saved = f"Saved addresses: home={cfg.home_address or 'unknown'}; work={cfg.work_address or 'unknown'}."
+    saved = f"Saved addresses: home={home or cfg.home_address or 'unknown'}; work={cfg.work_address or 'unknown'}."
     response = client.messages.parse(
         model=cfg.model,
         max_tokens=1024,

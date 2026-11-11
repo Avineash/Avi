@@ -1,6 +1,7 @@
 """Face matching against people you have enrolled. Embeddings are stored, not photos."""
 import json
 import os
+import threading
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -67,23 +68,72 @@ def seat_of(bbox_center_x: float, frame_width: int, driver_side: str) -> str:
     return "driver" if on_left == (driver_side == "left") else "passenger"
 
 
+class PeopleStore:
+    """Enrolled people, shared by the robot loop and the web page."""
+
+    def __init__(self, path: str):
+        self.path = path
+        self._lock = threading.Lock()
+        self._people = load_people(path)
+
+    def snapshot(self) -> list[Person]:
+        with self._lock:
+            return list(self._people)
+
+    def upsert(self, person: Person) -> None:
+        with self._lock:
+            self._people = [p for p in self._people if p.name != person.name] + [person]
+            save_people(self.path, self._people)
+
+    def update(self, name: str, address: str | None = None, language: str | None = None) -> bool:
+        with self._lock:
+            for p in self._people:
+                if p.name == name:
+                    if address is not None:
+                        p.address = address
+                    if language is not None:
+                        p.language = language or None
+                    save_people(self.path, self._people)
+                    return True
+            return False
+
+    def remove(self, name: str) -> bool:
+        with self._lock:
+            kept = [p for p in self._people if p.name != name]
+            changed = len(kept) != len(self._people)
+            self._people = kept
+            if changed:
+                save_people(self.path, kept)
+            return changed
+
+
 class FaceRecognizer:
-    def __init__(self, people: list[Person], threshold: float, driver_side: str):
+    def __init__(self, store: PeopleStore, threshold: float, driver_side: str):
         from insightface.app import FaceAnalysis  # heavy import, kept lazy
 
-        self.people, self.threshold, self.driver_side = people, threshold, driver_side
+        self.store, self.threshold, self.driver_side = store, threshold, driver_side
+        self._lock = threading.Lock()
         self.app = FaceAnalysis(name="buffalo_s", providers=["CPUExecutionProvider"])
         self.app.prepare(ctx_id=-1, det_size=(640, 640))
 
-    def embed(self, frame):
-        """[(bbox, normalized embedding)] for every face in a BGR frame."""
-        return [(f.bbox, f.normed_embedding) for f in self.app.get(frame)]
+    def _faces(self, frame):
+        with self._lock:
+            return self.app.get(frame)
+
+    def enroll_embedding(self, img):
+        """Embedding of the largest face in an image, or None."""
+        faces = self._faces(img)
+        if not faces:
+            return None
+        face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+        return face.normed_embedding
 
     def look(self, frame) -> list[Sighting]:
         width = frame.shape[1]
+        people = self.store.snapshot()
         out = []
-        for bbox, emb in self.embed(frame):
-            person, score = best_match(emb, self.people, self.threshold)
-            cx = float((bbox[0] + bbox[2]) / 2)
+        for f in self._faces(frame):
+            person, score = best_match(f.normed_embedding, people, self.threshold)
+            cx = float((f.bbox[0] + f.bbox[2]) / 2)
             out.append(Sighting(person, score, seat_of(cx, width, self.driver_side)))
         return out

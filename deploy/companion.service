@@ -1,7 +1,7 @@
 # Runs at boot. When the car powers the USB port, the Pi boots and this starts.
 [Unit]
 Description=Car companion
-After=network-online.target sound.target
+After=network-online.target sound.target tailscaled.service
 Wants=network-online.target
 
 [Service]

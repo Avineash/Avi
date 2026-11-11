@@ -1,9 +1,10 @@
 anthropic>=1.0
 pydantic>=2
 requests>=2.31
-faster-whisper>=1.0
-sounddevice>=0.4
+flask>=3.0
+waitress>=3.0
 numpy>=1.26
+sounddevice>=0.4
 insightface>=0.7
 onnxruntime>=1.17
 opencv-python-headless>=4.9

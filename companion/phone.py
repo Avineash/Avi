@@ -1,4 +1,4 @@
-"""Trigger the navigation shortcut on the iPhone."""
+"""Map links, plus an optional Pushcut lock-screen notification."""
 from urllib.parse import quote, quote_plus
 
 import requests
@@ -16,28 +16,8 @@ def maps_url(query: str, app: str = "google", mode: str = "driving") -> str:
     return f"https://www.google.com/maps/dir/?api=1&destination={q}&travelmode={mode}&dir_action=navigate"
 
 
-def send_to_phone(query: str, mode: str, cfg: Config) -> None:
-    """Run the iPhone Shortcut via Pushcut, passing the maps URL as its input.
-
-    Needs the Pushcut app with its Automation Server enabled on the phone.
-    """
-    if not cfg.pushcut_api_key:
-        raise RuntimeError("PUSHCUT_API_KEY is not set")
-    r = requests.post(
-        "https://api.pushcut.io/v1/execute",
-        params={"shortcut": cfg.pushcut_shortcut, "input": maps_url(query, cfg.maps_app, mode)},
-        headers={"API-Key": cfg.pushcut_api_key},
-        timeout=10,
-    )
-    r.raise_for_status()
-
-
 def notify_trip(name: str, address: str, cfg: Config) -> None:
-    """Push a notification; tapping it opens Google Maps navigation to `address`.
-
-    Ignored notifications just sit there: nothing else happens. The notification
-    named PUSHCUT_NOTIFICATION must exist in the Pushcut app.
-    """
+    """Optional lock-screen push (Pushcut). Tapping it opens Google Maps navigation to `address`."""
     if not cfg.pushcut_api_key:
         raise RuntimeError("PUSHCUT_API_KEY is not set")
     url = maps_url(address, cfg.maps_app)
