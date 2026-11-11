@@ -13,12 +13,15 @@ class Destination(BaseModel):
         default=None,
         description="Search string or address to pass to a maps app, e.g. 'Bunnings Marrickville'.",
     )
+    language: Literal["en", "ta"] = Field(default="en", description="Language of the driver's request: en or ta (Tamil).")
     mode: Literal["driving", "walking", "transit"] = "driving"
-    reply: str = Field(description="One short sentence to say back to the driver.")
+    reply: str = Field(description="One short sentence to say back to the driver, in the same language as the request.")
 
 
 SYSTEM = (
-    "You are a car voice companion. The driver speaks a destination after starting the car. "
+    "You are a car voice companion. The driver may speak English, Tamil or a mix. "
+    "Write query in the form most likely to be found on Google Maps (usually the English spelling of well-known places). "
+    "The driver speaks a destination after starting the car. "
     "Extract where they want to go. Resolve 'home' and 'work' using the saved addresses "
     "when given. Speech-to-text may have errors; fix obvious ones. If the request is not a "
     "navigation request or is too vague to search, set understood=false and ask a short "

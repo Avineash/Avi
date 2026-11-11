@@ -1,53 +1,97 @@
-"""Entry point. Runs once per power-up: greet, listen, resolve destination, trigger phone."""
+"""The robot: watches the cabin, greets the driver, notifies your phone about passengers."""
 import logging
-import sys
+import time
 
 from . import audio, phone
+from .camera import Camera
 from .config import Config
+from .faces import FaceRecognizer, Person, load_people
 from .intent import parse_destination
+from .phrases import YES, say
 from .stt import Transcriber
 
 log = logging.getLogger("companion")
-YES = {"yes", "yeah", "yep", "correct", "go", "sure", "ok", "okay"}
 
 
-def listen(cfg: Config, stt: Transcriber) -> str:
+def listen(cfg: Config, stt: Transcriber, language: str | None) -> str:
     clip = audio.record_until_silence(cfg.max_listen_seconds, cfg.silence_seconds, cfg.energy_threshold)
-    text = stt(clip)
+    text = stt(clip, language)
     log.info("heard: %r", text)
     return text
 
 
-def run(cfg: Config) -> int:
-    stt = Transcriber(cfg.whisper_model)
-    audio.speak("Hi. Where are we going?")
+def handle_driver(person: Person, cfg: Config, stt: Transcriber) -> None:
+    lang = person.language or "en"
+    audio.speak(say("greet", lang, name=person.name), lang)
     for _ in range(3):
-        text = listen(cfg, stt)
+        text = listen(cfg, stt, person.language)
         if not text:
-            audio.speak("I didn't hear anything. Where to?")
+            audio.speak(say("retry", lang), lang)
             continue
         dest = parse_destination(text, cfg)
+        lang = dest.language
         if not dest.understood or not dest.query:
-            audio.speak(dest.reply)
+            audio.speak(dest.reply, lang)
             continue
         if cfg.confirm:
-            audio.speak(f"{dest.query}. Is that right?")
-            answer = listen(cfg, stt).lower().strip(" .!?")
-            if answer.split(" ")[0] not in YES:
-                audio.speak("Okay, where to?")
+            audio.speak(say("confirm", lang, place=dest.query), lang)
+            answer = listen(cfg, stt, person.language).lower().strip(" .!?")
+            if not answer or answer.split(" ")[0].strip(".,!?") not in YES:
+                audio.speak(say("again", lang), lang)
                 continue
         try:
             phone.send_to_phone(dest.query, dest.mode, cfg)
         except Exception:
             log.exception("phone trigger failed")
-            audio.speak("I couldn't reach your phone.")
-            return 1
-        audio.speak(dest.reply)
-        return 0
-    audio.speak("Okay, I'll stay quiet.")
-    return 0
+            audio.speak(say("phone_fail", lang), lang)
+            return
+        audio.speak(dest.reply, lang)
+        return
+    audio.speak(say("giveup", lang), lang)
+
+
+def handle_passenger(person: Person, cfg: Config) -> None:
+    if not person.address:
+        log.info("%s has no address on file; skipping", person.name)
+        return
+    try:
+        phone.notify_trip(person.name, person.address, cfg)
+        log.info("notified phone about %s", person.name)
+    except Exception:
+        log.exception("notification failed")
+
+
+def run(cfg: Config) -> None:
+    people = load_people(cfg.people_file)
+    if not people:
+        raise SystemExit(f"No one enrolled. Run: python -m companion.enroll add ... ({cfg.people_file})")
+    cam = Camera(cfg)
+    recognizer = FaceRecognizer(people, cfg.face_threshold, cfg.driver_side)
+    stt = Transcriber(cfg.whisper_model)
+    streak: dict[str, int] = {}  # consecutive frames each person has been seen
+    handled: dict[str, float] = {}  # name -> last time they were seen after being handled
+    log.info("watching with %d enrolled people", len(people))
+    while True:
+        frame = cam.read()
+        sightings = recognizer.look(frame) if frame is not None else []
+        now = time.monotonic()
+        seen = {s.person.name: s for s in sightings if s.person}
+        streak = {n: streak.get(n, 0) + 1 for n in seen}
+        for name, s in seen.items():
+            if name in handled:
+                handled[name] = now
+            elif streak[name] >= cfg.confirm_frames:
+                handled[name] = now
+                log.info("recognised %s (%s, score %.2f)", name, s.seat, s.score)
+                if s.seat == "driver":
+                    handle_driver(s.person, cfg, stt)
+                else:
+                    handle_passenger(s.person, cfg)
+        for name in [n for n, t in handled.items() if now - t > cfg.absent_reset]:
+            del handled[name]
+        time.sleep(cfg.frame_interval)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    sys.exit(run(Config()))
+    run(Config())

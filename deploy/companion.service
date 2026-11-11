@@ -9,7 +9,8 @@ User=pi
 WorkingDirectory=/home/pi/Avi
 EnvironmentFile=/home/pi/Avi/.env
 ExecStart=/home/pi/Avi/.venv/bin/python -m companion.main
-Restart=no
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

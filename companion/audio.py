@@ -29,6 +29,7 @@ def record_until_silence(max_seconds: float, silence_seconds: float, threshold: 
     return np.concatenate(chunks) if chunks else np.zeros(0, dtype="float32")
 
 
-def speak(text: str) -> None:
-    """Offline TTS via espeak-ng (apt install espeak-ng)."""
-    subprocess.run(["espeak-ng", "-s", "165", text], check=False)
+def speak(text: str, lang: str | None = "en") -> None:
+    """Offline TTS via espeak-ng (apt install espeak-ng). Supports English and Tamil."""
+    voice = "ta" if lang == "ta" else "en"
+    subprocess.run(["espeak-ng", "-v", voice, "-s", "165", text], check=False)
