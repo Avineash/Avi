@@ -37,6 +37,10 @@ src/app/**                      Next.js App Router pages, server actions (src/ap
 tests/                          vitest suites (run on PGlite, or real Postgres via TEST_DATABASE_URL)
 ```
 
+## 2a. Design system (web UI)
+
+Direction researched from current design-trend roundups (bento grids, oversized fluid typography, scroll-driven motion, restrained glass, micro-interactions, contrast-first colour — see the sources the team consulted in the project notes) and applied inside the navy / ivory / muted-gold identity: Fraunces (variable, optical sizing) for display, Inter for UI, self-hosted via Fontsource; fluid `clamp()` hero type; film-grain and aurora backgrounds (transform/opacity only); CSS scroll-driven reveals and view transitions as progressive enhancement; a pure-CSS live ticker; image-led editorial cards; floating glass navigation; gold text darkened to meet 4.5:1 on ivory; `prefers-reduced-motion` disables all motion. No testimonials, awards or statistics are invented — every number on the homepage is live data. A global dark theme is not built.
+
 ## 3. Data model (summary)
 
 | Area | Tables |
@@ -76,7 +80,7 @@ Money is integer cents. Key database-level guarantees: `reservations_one_live_pe
 | Area | What the product does | What still needs a lawyer / accountant |
 |---|---|---|
 | Australian Consumer Law | Total price (incl. mandatory fee, GST) shown before payment; cancellation terms shown and locked at purchase; policies say they never limit consumer guarantees; exceptional-refund request flow | Final wording of Terms, refund & cancellation policies; drip-pricing review |
-| Buyback / reallocation | Off by default; needs admin switch **and** a recorded legal-review reference; opt-in at checkout with stored wording; separate acceptance; no penalty for declining; refund-then-release ordering | **Legal review before enabling** (required by the brief) |
+| Buyback / reallocation | **Only for partners registered and approved on the platform** (enforced in eligibility, waitlist re-offer and release; a suspended partner never has inventory re-offered); off by default; needs admin switch **and** a recorded legal-review reference; opt-in at checkout with stored wording; separate acceptance; no penalty for declining; refund-then-release ordering | **Legal review before enabling** (required by the brief) |
 | Ticket resale | Separate gate; price cap (default 110% of face value, configurable) enforced; always admin-approved | Confirm the cap and scope per state/event (e.g. Victorian declared events) |
 | Restaurant deposits | Dining packages are prepaid in full; terms shown | Deposit/no-show rules per venue |
 | GST & invoicing | GST-inclusive pricing, 1/11 GST on fees and (if registered) partner supply; tax-invoice view; GST report by month | Agent vs principal analysis, invoice format, BAS treatment |

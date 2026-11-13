@@ -24,6 +24,9 @@ import { providerByName } from "@/lib/providers/payments";
  *  4. Inventory is released only after the refund has succeeded and the compensation has been paid/scheduled.
  */
 
+/** Resale and reallocation exist only for inventory sold by partners registered, verified and approved on the platform. */
+export const REGISTERED_ONLY = "Resale is only possible for inventory from a partner that is registered and approved on Eleventh Hour.";
+
 export interface BuybackQuote {
   originalTotalCents: number; originalPriceCents: number; originalCustomerFeeCents: number; originalCommissionCents: number;
   compensationCents: number; paymentCostCents: number;
@@ -62,7 +65,7 @@ export async function checkEligibility(c: Queryable, reservationId: string, now 
   if (!r) return { eligible: false, reasons: ["Booking not found"] };
   if (!(await featureOn(c, "features.buyback"))) reasons.push("Customer buyback is switched off platform-wide (legal review not yet recorded).");
   if (r.category === "event" && !(await featureOn(c, "features.event_resale"))) reasons.push("Event ticket resale is switched off platform-wide (legal review not yet recorded).");
-  if (r.partner_status !== "approved") reasons.push("Partner is not approved.");
+  if (r.partner_status !== "approved") reasons.push(REGISTERED_ONLY);
   if (!r.buyback_enabled) reasons.push("You have not enabled buyback for your business.");
   if (!r.buyback_eligible) reasons.push("This listing was not published as buyback-eligible.");
   if (r.status !== "confirmed" || r.unit_status !== "booked") reasons.push("The booking is not in a confirmed state (or an offer is already in progress).");

@@ -10,7 +10,7 @@ Next.js 15 · TypeScript · Tailwind · PostgreSQL (Supabase-compatible) · Stri
 ```bash
 npm install
 npm run dev            # http://localhost:3000 — embedded Postgres (PGlite), auto-migrated and seeded with Melbourne demo data
-npm test               # 60 tests on PGlite
+npm test               # 62 tests on PGlite
 TEST_DATABASE_URL=postgres://postgres@localhost:5432/postgres npm test   # same suite on real Postgres (true concurrency)
 ```
 

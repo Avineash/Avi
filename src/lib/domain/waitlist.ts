@@ -67,9 +67,9 @@ export async function reofferUnit(tx: Tx, unitId: string, o: ReofferOpts) {
   else if (unit.status === "held" || unit.status === "waitlisted" || unit.status === "available") await transition(tx, unitId, "released", { actor: o.actor, reason: "re-offer" });
   else if (unit.status !== "released") throw new DomainError("CONFLICT", `Cannot re-offer a unit that is ${unit.status}`);
 
-  const l = (await tx.query<any>("select l.*, p.waitlist_policy, p.offer_window_minutes from listings l join partners p on p.id = l.partner_id where l.id = $1", [unit.listing_id])).rows[0];
+  const l = (await tx.query<any>("select l.*, p.waitlist_policy, p.offer_window_minutes, p.status as partner_status from listings l join partners p on p.id = l.partner_id where l.id = $1", [unit.listing_id])).rows[0];
   const now = new Date();
-  const open = l.status === "published" && new Date(l.booking_deadline) > now;
+  const open = l.partner_status === "approved" && l.status === "published" && new Date(l.booking_deadline) > now; // never re-offer on behalf of a partner that is not registered & approved
   if (!open) return null; // stays 'released'; nothing can be sold any more
   const price: number = o.price ?? unit.price_override_cents ?? l.current_price_cents;
   const order = l.waitlist_policy === "highest_offer" ? "coalesce(w.max_price_cents, $2) desc, w.created_at asc" : "w.created_at asc";
@@ -164,6 +164,8 @@ export async function partnerReleaseToWaitlist(a: { partnerId: string; unitId: s
   return inTx(async (tx) => {
     const u = (await tx.query<any>("select u.*, l.min_price_cents, l.max_price_cents from inventory_units u join listings l on l.id = u.listing_id where u.id = $1 for update of u", [a.unitId])).rows[0];
     if (!u || u.partner_id !== a.partnerId) throw new DomainError("FORBIDDEN", "Not your inventory");
+    const pa = (await tx.query<any>("select status from partners where id = $1", [a.partnerId])).rows[0];
+    if (pa?.status !== "approved") throw new DomainError("FORBIDDEN", "Resale and release are only available to partners registered and approved on Eleventh Hour.");
     if (!["available", "cancelled"].includes(u.status)) throw new DomainError("CONFLICT", `Only unsold or cancelled inventory can be released this way (this unit is ${u.status}). Booked rooms need the buyback workflow.`);
     if (a.priceCents != null && (a.priceCents < u.min_price_cents || a.priceCents > u.max_price_cents)) throw new DomainError("INVALID", "Price is outside your minimum/maximum");
     const wl = (await tx.query<any>("select count(*)::int n from waitlist_entries where listing_id = $1 and status = 'active'", [u.listing_id])).rows[0].n;

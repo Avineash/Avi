@@ -96,6 +96,35 @@ describe("buyback — eligibility gates", () => {
   });
 });
 
+describe("buyback — registered partners only", () => {
+  it("is impossible unless the partner is registered and approved on the platform", async () => {
+    const s = await scenario();
+    const db = await getDb();
+    const base = { partnerId: s.pt.partnerId, actor: s.actor, reservationId: s.reservation.id, compensationCents: 3000, resalePriceCents: 30000 };
+    for (const status of ["pending", "suspended", "rejected"]) {
+      await db.query("update partners set status = $2 where id = $1", [s.pt.partnerId, status]);
+      const el = await checkEligibility(db, s.reservation.id);
+      expect(el.eligible).toBe(false);
+      expect(el.reasons.join(" ")).toMatch(/registered and approved/);
+      await expect(proposeBuyback(base)).rejects.toMatchObject({ code: "NOT_ELIGIBLE" });
+    }
+    expect(await unitStatuses(s.listing)).toEqual(["booked"]);
+    await db.query("update partners set status = 'approved' where id = $1", [s.pt.partnerId]);
+    expect((await checkEligibility(db, s.reservation.id)).eligible).toBe(true);
+  });
+
+  it("a partner that is suspended mid-flow never gets inventory re-offered on its behalf", async () => {
+    const s = await scenario();
+    const db = await getDb();
+    const { offerId } = await proposeBuyback({ partnerId: s.pt.partnerId, actor: s.actor, reservationId: s.reservation.id, compensationCents: 3000, resalePriceCents: 30000 });
+    await db.query("update partners set status = 'suspended' where id = $1", [s.pt.partnerId]);
+    await respondToBuyback({ customerId: s.A, offerId, decision: "accept" }); // customer is still made whole (refund + compensation)…
+    expect(await resStatus(s.reservation.id)).toBe("cancelled");
+    expect(await unitStatuses(s.listing)).toEqual(["released"]); // …but the unit is NOT offered to anyone
+    expect((await db.query("select 1 from waitlist_offers where unit_id is not null")).rows).toHaveLength(0);
+  });
+});
+
 describe("buyback — full workflow", () => {
   it("happy path: offer → A accepts → refund + compensation → release → B offered → B pays → everyone reconciled", async () => {
     const s = await scenario();
