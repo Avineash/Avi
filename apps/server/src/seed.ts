@@ -20,12 +20,12 @@ function rng(seed: number) {
   return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-const svg = (body: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" role="img">${body}</svg>`);
+const svgW = (w: number, body: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 48" role="img">${body}</svg>`);
 const LOGOS = {
-  aurora: svg(`<circle cx="24" cy="26" r="14" fill="#c98a2b"/><path d="M6 36a18 18 0 0 1 36 0z" fill="#0f7a76"/><text x="52" y="31" font-family="Georgia,serif" font-size="19" font-weight="600" fill="#0f5c5a">Aurora</text>`),
-  maison: svg(`<path d="M10 38C10 20 22 10 40 8c-1 18-9 30-30 30z" fill="#5d7f69"/><path d="M12 38c8-10 14-16 24-24" stroke="#fbf6f3" stroke-width="2" fill="none"/><text x="50" y="31" font-family="Georgia,serif" font-style="italic" font-size="19" fill="#9b3d55">Maison Verde</text>`),
-  meridianLight: svg(`<path d="M24 6l14 18-14 18L10 24z" fill="none" stroke="#7a5a1e" stroke-width="3"/><path d="M24 14v20" stroke="#7a5a1e" stroke-width="3"/><text x="48" y="31" font-family="Georgia,serif" font-size="19" letter-spacing="3" fill="#1c1a16">MERIDIAN</text>`),
-  meridianDark: svg(`<path d="M24 6l14 18-14 18L10 24z" fill="none" stroke="#c9a35b" stroke-width="3"/><path d="M24 14v20" stroke="#c9a35b" stroke-width="3"/><text x="48" y="31" font-family="Georgia,serif" font-size="19" letter-spacing="3" fill="#f2ede4">MERIDIAN</text>`),
+  aurora: svgW(150, `<circle cx="24" cy="26" r="14" fill="#c98a2b"/><path d="M6 36a18 18 0 0 1 36 0z" fill="#0f7a76"/><text x="52" y="31" font-family="Georgia,serif" font-size="19" font-weight="600" fill="#0f5c5a">Aurora</text>`),
+  maison: svgW(190, `<path d="M10 38C10 20 22 10 40 8c-1 18-9 30-30 30z" fill="#5d7f69"/><path d="M12 38c8-10 14-16 24-24" stroke="#fbf6f3" stroke-width="2" fill="none"/><text x="50" y="31" font-family="Georgia,serif" font-style="italic" font-size="19" fill="#9b3d55">Maison Verde</text>`),
+  meridianLight: svgW(200, `<path d="M24 6l14 18-14 18L10 24z" fill="none" stroke="#7a5a1e" stroke-width="3"/><path d="M24 14v20" stroke="#7a5a1e" stroke-width="3"/><text x="48" y="31" font-family="Georgia,serif" font-size="19" letter-spacing="3" fill="#1c1a16">MERIDIAN</text>`),
+  meridianDark: svgW(200, `<path d="M24 6l14 18-14 18L10 24z" fill="none" stroke="#c9a35b" stroke-width="3"/><path d="M24 14v20" stroke="#c9a35b" stroke-width="3"/><text x="48" y="31" font-family="Georgia,serif" font-size="19" letter-spacing="3" fill="#f2ede4">MERIDIAN</text>`),
 };
 const FAVICON = (color: string) => new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="${color}"/><circle cx="16" cy="16" r="7" fill="#fff"/></svg>`);
 
@@ -121,9 +121,7 @@ export function seedDemo(db: DB, today = new Date()): void {
           const members = [mgr, ...staff];
           members.forEach((emp, idx) => {
             const offset = idx % 3; // 0: Mon–Fri, 1: Wed–Sun, 2: Tue–Sat
-            const leave = (taken.get(emp) ?? []);
             const approvedRanges = all<{ start_date: string; end_date: string }>(db, "SELECT start_date, end_date FROM leave_requests WHERE employee_id = ? AND status = 'approved'", emp);
-            void leave;
             for (let w = 0; w < 5; w++) for (let d = 0; d < 7; d++) {
               const dow = d; // 0 = Monday
               const works = offset === 0 ? dow <= 4 : offset === 1 ? dow >= 2 : dow >= 1 && dow <= 5;
@@ -149,7 +147,6 @@ function seedThemes(db: DB) {
     const company = get<{ id: string }>(db, 'SELECT id FROM companies WHERE slug = ?', spec.slug)!;
     const admin = get<{ id: string; name: string; email: string }>(db, "SELECT id, name, email FROM users WHERE company_id = ? AND role = 'company_admin'", company.id)!;
     const ctx: Ctx = { userId: admin.id, companyId: company.id, propertyId: null, departmentId: null, role: 'company_admin', name: admin.name, email: admin.email };
-    const scope = resolveScope(db, ctx, 'company');
     const preset = getPreset(spec.preset)!;
     const publishLayer = (layer: ThemeConfig, note: string) => {
       const s = resolveScope(db, ctx, 'company');
@@ -168,7 +165,6 @@ function seedThemes(db: DB) {
     const identity: NonNullable<ThemeConfig['identity']> = { companyName: spec.name, tagline: spec.tagline, logoAssetId: logo.id, faviconAssetId: fav.id };
     if (spec.slug === 'meridian') identity.logoDarkAssetId = saveAsset(db, ctx, 'logoDark', LOGOS.meridianDark).id;
     publishLayer({ ...base, identity }, 'Added logo, favicon and tagline');
-    void scope;
   }
 
   // Aurora lets properties override identity *and* colours; the Alpine Lodge uses a forest-green variant of the brand.

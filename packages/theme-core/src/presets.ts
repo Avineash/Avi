@@ -2,6 +2,9 @@ import { generatePalette } from './palette.ts';
 import { mergeConfigs } from './config-ops.ts';
 import type { ConfigGroup, StatusKey, StatusScheme, ThemeConfig } from './schema.ts';
 
+/** Starting brand colour offered by the "Custom brand" preset. */
+export const CUSTOM_BRAND_DEFAULT = '#6d28d9';
+
 export type PresetId =
   | 'premium-hospitality' | 'modern-corporate' | 'minimal-monochrome'
   | 'boutique-hotel' | 'luxury-dark' | 'custom-brand';
@@ -108,7 +111,7 @@ export const PRESETS: readonly ThemePreset[] = [
     description: 'Start from one brand colour and generate a complete light and dark palette.',
     generated: true,
     config: {
-      colors: generatePalette('#6d28d9'),
+      colors: generatePalette(CUSTOM_BRAND_DEFAULT),
       typography: { headingFont: 'inter', bodyFont: 'inter' },
       shape: { radius: 'rounded', density: 'comfortable' },
       mode: { default: 'system', allowUserOverride: true },

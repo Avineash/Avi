@@ -357,7 +357,7 @@ describe('draft → preview → publish → rollback', () => {
     // the property editor shows what it inherits (company published layer)
     const ps = await state(alpine);
     expect(ps.scope.type).toBe('property');
-    expect(ps.inheritedLayers[0].colors.light.accent).toBe('#8a4b00');
+    expect(ps.inheritedLayers.find((l: any) => l.colors)?.colors.light.accent).toBe('#8a4b00');
     void harbour;
   });
 

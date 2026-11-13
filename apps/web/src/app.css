@@ -1,0 +1,38 @@
+html { background: var(--ds-bg, #fff); /* literal-ok: fallback before tokens load */ color-scheme: light dark; }
+body { margin: 0; }
+html[data-scheme="light"] { color-scheme: light; }
+html[data-scheme="dark"] { color-scheme: dark; }
+.app-root, .login-page { min-height: 100dvh; }
+.boot { display: grid; place-items: center; }
+
+.brand-block { display: grid; gap: 4px; min-width: 0; }
+.brand-caption { font-size: .78em; opacity: .8; padding-left: 2px; }
+.ds-topbar__brand .brand-caption { display: none; }
+.user-chip { display: flex; align-items: center; gap: var(--s3); min-width: 0; }
+.user-chip .ds-avatar { background: var(--ds-nav-active-bg); color: var(--ds-nav-fg); }
+.user-chip__name { font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; }
+.user-chip__role { font-size: .85em; opacity: .8; }
+.nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--ds-accent); color: var(--ds-on-accent); font-size: .78em; font-weight: 700; display: inline-grid; place-items: center; }
+@container ds (max-width: 859px) { .nav-badge { position: absolute; top: 2px; right: 12%; margin: 0; min-width: 16px; height: 16px; font-size: .66em; } }
+
+.page-greeting { font-size: 1.7em; }
+.status-summary .ds-list__row { min-height: 0; padding-top: var(--s2); padding-bottom: var(--s2); }
+.legend-row { margin-top: var(--s4); }
+.state-grid { display: grid; gap: var(--s3); }
+.state-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.state-row__label { width: 72px; font-size: .82em; text-transform: capitalize; }
+
+.mode-toggle { display: inline-flex; padding: 2px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-btn); background: var(--ds-bg); }
+.mode-toggle button { display: grid; place-items: center; width: 32px; height: 28px; border: 0; background: none; color: var(--ds-text-muted); border-radius: calc(var(--ds-radius-btn) - 2px); cursor: pointer; }
+.mode-toggle button.is-on { background: var(--ds-btn-bg); color: var(--ds-btn-fg); }
+
+.login-page { display: grid; place-items: center; padding: var(--s5); }
+.login-wrap { width: min(440px, 100%); display: grid; gap: var(--s4); }
+.login-brand { display: grid; gap: var(--s2); justify-items: center; text-align: center; padding: var(--s4) 0 var(--s2); }
+.login-title { font-size: 1.5em; }
+.login-foot { text-align: center; font-size: .85em; }
+.demo-list { display: grid; gap: var(--s2); }
+.demo-chip { display: grid; text-align: left; padding: var(--s2) var(--s3); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); background: var(--ds-surface); cursor: pointer; }
+.demo-chip:hover { border-color: var(--ds-primary-text); background: var(--ds-secondary); color: var(--ds-on-secondary); }
+.demo-chip span { color: inherit; opacity: .8; font-size: .86em; }
+.ds-root code { background: var(--ds-secondary); color: var(--ds-on-secondary); padding: 1px 6px; border-radius: var(--ds-radius-sm); }

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  DEFAULT_OVERRIDE_POLICY, diffConfigs, fingerprint, auditTheme, mergeConfigs, normalizePolicy, policyViolations,
+  DEFAULT_OVERRIDE_POLICY, diffConfigs, fingerprint, auditTheme, normalizePolicy, policyViolations,
   resolveTheme, summarizeChanges, validateThemeConfig, CONFIG_GROUPS,
   type AuditReport, type ConfigGroup, type OverridePolicy, type ThemeConfig,
 } from '@staffhub/theme-core';
@@ -80,6 +80,12 @@ export function activeConfig(db: DB, scope: ScopeRow): ThemeConfig {
   return parse(v?.config);
 }
 
+/** A company's display name defaults to its record name, so "Your Company" never reaches a real tenant. */
+function companyNameLayer(db: DB, companyId: string): ThemeConfig {
+  const c = get<{ name: string }>(db, 'SELECT name FROM companies WHERE id = ?', companyId);
+  return c ? { identity: { companyName: c.name } } : {};
+}
+
 /** The property's display name defaults to its record name, so a new property is branded correctly before anyone touches the editor. */
 function propertyNameLayer(db: DB, companyId: string, propertyId: string): ThemeConfig {
   const p = get<{ name: string }>(db, 'SELECT name FROM properties WHERE id = ? AND company_id = ?', propertyId, companyId);
@@ -88,9 +94,10 @@ function propertyNameLayer(db: DB, companyId: string, propertyId: string): Theme
 
 /** Layers a scope inherits from (published only; drafts of a parent never leak into a child). */
 export function inheritedLayers(db: DB, scope: ScopeRow): ThemeConfig[] {
-  if (!scope.property_id) return [];
+  const base = companyNameLayer(db, scope.company_id);
+  if (!scope.property_id) return [base];
   const company = ensureScope(db, scope.company_id, null);
-  return [activeConfig(db, company), propertyNameLayer(db, scope.company_id, scope.property_id)];
+  return [base, activeConfig(db, company), propertyNameLayer(db, scope.company_id, scope.property_id)];
 }
 
 export interface PublishedTheme { config: ThemeConfig; fingerprint: string; companyVersion: number | null; propertyVersion: number | null }
@@ -98,7 +105,7 @@ export interface PublishedTheme { config: ThemeConfig; fingerprint: string; comp
 /** The theme end users see: system default → company (published) → property (published). */
 export function publishedTheme(db: DB, companyId: string, propertyId: string | null): PublishedTheme {
   const company = ensureScope(db, companyId, null);
-  const layers: ThemeConfig[] = [activeConfig(db, company)];
+  const layers: ThemeConfig[] = [companyNameLayer(db, companyId), activeConfig(db, company)];
   let propertyVersion: number | null = null;
   if (propertyId) {
     layers.push(propertyNameLayer(db, companyId, propertyId));
@@ -336,4 +343,3 @@ export function listAudit(db: DB, ctx: Ctx, limit = 50) {
       WHERE a.company_id = ? AND a.action LIKE 'brand.%' ORDER BY a.id DESC LIMIT ?`, ctx.companyId, Math.min(limit, 200));
 }
 
-export { mergeConfigs };

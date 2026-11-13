@@ -226,3 +226,15 @@ describe('accessibility audit', () => {
     }
   });
 });
+
+describe('info tone', () => {
+  it('is neutral: never derived from the brand colour, so it cannot be mistaken for a status', () => {
+    const a = resolveTheme({ colors: { light: { primary: '#9b3d55' } } }).schemes.light.info;
+    const b = resolveTheme({ colors: { light: { primary: '#0f5c5a' } } }).schemes.light.info;
+    expect(a).toEqual(b);
+    for (const p of PRESETS) {
+      const t = resolveTheme(p.config);
+      for (const s of ['light', 'dark'] as const) expect(contrastRatio(t.schemes[s].info.fg, t.schemes[s].info.bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});

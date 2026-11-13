@@ -21,13 +21,13 @@ export async function login(app: ReturnType<typeof createApp>, email: string, pa
   });
   if (res.status !== 200) throw new Error(`login failed for ${email}: ${res.status} ${await res.text()}`);
   const cookie = res.headers.get('set-cookie')!.split(';')[0]!;
-  const send: Client['send'] = (method, path, body, headers = {}) =>
+  const send: Client['send'] = async (method, path, body, headers = {}) =>
     app.request(path, {
       method,
       headers: { cookie, 'x-requested-with': 'staffhub', ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...headers },
-      body: body === undefined ? undefined : typeof body === 'string' || body instanceof Uint8Array ? (body as BodyInit) : JSON.stringify(body),
+      body: body === undefined ? undefined : typeof body === 'string' || body instanceof Uint8Array ? (body as never) : JSON.stringify(body),
     });
-  return { email, send, get: (path, init) => app.request(path, { ...init, headers: { cookie, ...(init?.headers ?? {}) } }), json: async (r) => (await r.json()) as never };
+  return { email, send, get: async (path, init) => app.request(path, { ...init, headers: { cookie, ...(init?.headers ?? {}) } }), json: async (r) => (await r.json()) as never };
 }
 
 export const ids = (db: DB, sql: string, ...p: unknown[]) => all<{ id: string }>(db, sql, ...p).map((r) => r.id);

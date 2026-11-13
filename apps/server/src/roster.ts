@@ -59,7 +59,7 @@ export function getRoster(db: DB, ctx: Ctx, q: { weekStart?: string; propertyId?
   const totalHours = shifts.reduce((n, s) => n + shiftHours(s.start_time, s.end_time), 0);
   return {
     weekStart: start, weekEnd: end, totalHours,
-    people: people.map((p) => ({ id: p.id, name: p.name, department: p.department, property: p.property })),
+    people: people.map((p) => ({ id: p.id, name: p.name, property: p.property, department: ctx.role === 'company_admin' ? `${p.property} · ${p.department}` : p.department })),
     shifts: shifts.map((s) => ({ id: s.id, employeeId: s.employee_id, date: s.shift_date, start: s.start_time, end: s.end_time, label: s.label, hours: shiftHours(s.start_time, s.end_time) })),
     leave: leave.map((l) => ({ employeeId: l.employee_id, startDate: l.start_date, endDate: l.end_date, status: l.status })),
   };

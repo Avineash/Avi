@@ -126,8 +126,10 @@ function resolveScheme(config: ThemeConfig, scheme: Scheme): ResolvedScheme {
     status[key] = { bg, fg, border: mix(fg, bg, 0.45) };
   }
 
-  const infoBg = mix(primary, surface, dark ? 0.78 : 0.88);
-  const infoFg = ensureContrast(ensureContrastAll(primary, [surface, pageBg], 4.5), infoBg, 4.5);
+  // "Info" is deliberately neutral (tinted from text/surface, not from the brand colour): a brand-coloured notice could
+  // look identical to a Rejected or Pending status, and statuses must stay unambiguous whatever the palette.
+  const infoBg = mix(text, surface, dark ? 0.9 : 0.94);
+  const infoFg = ensureContrast(text, infoBg, 4.5);
 
   return {
     colors,
