@@ -1,0 +1,23 @@
+{
+  "name": "staffhub",
+  "private": true,
+  "version": "0.1.0",
+  "description": "VOCO StaffHub — workforce platform with a white-label, multi-tenant design system",
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @staffhub/server\" \"npm run dev -w @staffhub/web\"",
+    "build": "npm run build -w @staffhub/web",
+    "start": "npm run start -w @staffhub/server",
+    "seed": "npm run seed -w @staffhub/server",
+    "typecheck": "tsc -b",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "concurrently": "^10.0.7",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

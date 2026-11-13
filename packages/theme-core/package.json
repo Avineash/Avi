@@ -1,0 +1,9 @@
+{
+  "name": "@staffhub/theme-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-agnostic white-label theme engine: schema, validation, presets, inheritance, derivation, WCAG audit, CSS generation.",
+  "exports": { ".": "./src/index.ts" },
+  "sideEffects": false
+}

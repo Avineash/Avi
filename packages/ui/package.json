@@ -1,0 +1,11 @@
+{
+  "name": "@staffhub/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Token-driven React components. Every colour, radius, font and spacing value comes from --ds-* CSS custom properties.",
+  "exports": { ".": "./src/index.ts", "./styles.css": "./src/styles.css" },
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
+  "dependencies": { "@staffhub/theme-core": "*" }
+}

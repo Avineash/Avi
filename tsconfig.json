@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/theme-core" },
+    { "path": "packages/ui" },
+    { "path": "apps/server" },
+    { "path": "apps/web" }
+  ]
+}
