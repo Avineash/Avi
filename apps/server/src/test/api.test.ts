@@ -502,3 +502,18 @@ describe('public brand endpoint', () => {
     expect((await app.request('/api/public/brand')).status).toBe(400);
   });
 });
+
+describe('per-user appearance preference', () => {
+  it('is stored per user, validated, and does not leak to colleagues or change the company theme', async () => {
+    const { app, db } = freshApp();
+    const [a, b] = all<{ email: string }>(db, "SELECT email FROM users WHERE role='employee' AND email LIKE '%@aurora.example' ORDER BY id LIMIT 2");
+    const u1 = await login(app, a!.email), u2 = await login(app, b!.email);
+    const themeBefore = (await u1.json(await u1.get('/api/theme'))).fingerprint;
+    expect((await u1.send('PATCH', '/api/me/preferences', { appearance: 'dark' })).status).toBe(200);
+    expect((await (await u1.get('/api/me')).json()).user.appearancePref).toBe('dark');
+    expect((await (await u2.get('/api/me')).json()).user.appearancePref).toBeNull();
+    expect((await u1.send('PATCH', '/api/me/preferences', { appearance: 'neon' })).status).toBe(400);
+    expect((await u1.send('PATCH', '/api/me/preferences', { appearance: null })).status).toBe(200);
+    expect((await u1.json(await u1.get('/api/theme'))).fingerprint).toBe(themeBefore);
+  });
+});

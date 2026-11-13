@@ -12,7 +12,8 @@
     "start": "npm run start -w @staffhub/server",
     "seed": "npm run seed -w @staffhub/server",
     "typecheck": "tsc -b",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

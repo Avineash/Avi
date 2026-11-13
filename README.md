@@ -12,8 +12,9 @@ Every company, and optionally every property, controls its own visual identity f
 ```bash
 npm install
 npm run dev          # API on :8787, web on http://localhost:5173 (seeded demo data)
-npm test             # 86 tests: theme engine, tenant isolation, versioning, a11y gate, design-system guard
+npm test             # 87 tests: theme engine, tenant isolation, versioning, a11y gate, design-system guard
 npm run build && npm start   # production: API serves the built web app on http://localhost:8787
+npm run e2e          # optional browser check (needs playwright; see scripts/e2e.cjs)
 ```
 
 Requires Node ≥ 22.13 (uses the built-in `node:sqlite`). Data lives in `data/staffhub.db`;
@@ -52,7 +53,8 @@ packages/theme-core   framework-agnostic engine: schema, validation, presets, in
 packages/ui           React components driven only by --ds-* tokens (container-query responsive)
 apps/server           Hono + node:sqlite API: auth, tenant-scoped data, versioned brand store
 apps/web              React + Vite app and the Brand & Appearance manager
-docs/                 architecture, security notes, extension guide
+docs/ARCHITECTURE.md  model, tenancy, versioning, security notes, extension guide
+scripts/e2e.cjs       browser end-to-end check of the branding flow (+ optional axe scan)
 ```
 
 ## Using the design system in another product
