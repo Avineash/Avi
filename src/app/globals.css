@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: light; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { @apply bg-ivory-100 text-ink antialiased font-sans; }
+  h1, h2, h3, h4 { @apply font-serif text-navy-900 tracking-tight; }
+  a { @apply transition-colors; }
+  :focus-visible { @apply outline-none ring-2 ring-gold-500 ring-offset-2 ring-offset-ivory-100; }
+  ::selection { @apply bg-gold-300 text-navy-900; }
+  input, select, textarea { @apply text-[16px] sm:text-sm; } /* avoids iOS zoom on focus */
+}
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.18em] text-gold-600; }
+  .card { @apply rounded-2xl border border-navy-900/10 bg-white shadow-card; }
+  .gold-rule { @apply h-px w-16 bg-gold-500; }
+  .skip-link { @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-navy-900 focus:px-4 focus:py-2 focus:text-ivory; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
