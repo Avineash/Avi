@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 250 249 246; --surface: 255 255 255; --sunken: 244 243 239; --ink: 24 24 27; --muted: 98 98 108; --line: 228 226 220;
+  --ok: 21 128 61; --warn: 180 83 9; --bad: 185 28 28;
+  --brand: 15 92 77; --brand2: 233 162 59; --on-brand: 255 255 255; --brand-text: 15 92 77;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", "Iskoola Pota", "Nirmala UI", "Latha", sans-serif;
+  --font-display: var(--font-body);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: 13 14 16; --surface: 24 25 29; --sunken: 32 33 38; --ink: 244 244 245; --muted: 160 160 170; --line: 46 47 53;
+  --ok: 74 222 128; --warn: 251 191 36; --bad: 248 113 113;
+  color-scheme: dark;
+}
+[data-font="classic"] { --font-display: Georgia, "Noto Serif", "Noto Serif Sinhala", "Noto Serif Tamil", serif; }
+[data-font="rounded"] { --font-body: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif; --font-display: var(--font-body); }
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply bg-bg text-ink font-sans antialiased; min-height: 100dvh; overscroll-behavior-y: none; }
+h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+:lang(si) body, :lang(ta) body { line-height: 1.6; }       /* Sinhala/Tamil glyphs need more leading */
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid rgb(var(--brand-text) / .6); outline-offset: 2px; border-radius: 8px; }
+::selection { background: rgb(var(--brand) / .25); }
+.no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
+.safe-b { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[15px] font-semibold transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none select-none; min-height: 48px; }
+.btn-brand { @apply bg-brand text-onbrand shadow-card hover:brightness-110; }
+.btn-ghost { @apply bg-sunken text-ink hover:brightness-95; }
+.btn-line { @apply border border-line bg-surface text-ink hover:bg-sunken; }
+.btn-danger { @apply bg-bad text-white hover:brightness-110; }
+.btn-sm { @apply px-3 py-2 text-sm rounded-xl; min-height: 38px; }
+.card { @apply rounded-2xl bg-surface border border-line shadow-card; }
+.input { @apply w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-[15px] placeholder:text-muted/70 focus:border-brandtext; min-height: 46px; }
+.label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-muted; }
+.pill { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Data-viz series (validated categorical slots 1–2; dark steps selected for the dark surface) */
+:root { --series-1: #2a78d6; --series-2: #eb6834; --grid: 228 226 220; }
+[data-theme="dark"] { --series-1: #3987e5; --series-2: #d95926; --grid: 46 47 53; }

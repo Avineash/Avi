@@ -56,6 +56,13 @@ export async function publicRoutes({ app, db, svc, cfg }: AppCtx) {
     return { restaurant: restaurantView(r), table: { id: r.table_id, label: r.label }, menu, sandbox: cfg.allowSandbox };
   });
 
+  // Checkout shows payment options before an order exists. Unconfigured methods are hidden; unavailable ones are flagged.
+  app.get('/api/public/t/:token/methods', async (req, reply) => {
+    const r = await resolveTable((req.params as any).token);
+    reply.header('Cache-Control', 'no-store');
+    return { methods: await svc.methodsFor(r.id) };
+  });
+
   const QuoteBody = z.object({ items: z.array(LineIn).min(1).max(40) });
   app.post('/api/public/t/:token/quote', async (req) => {
     const r = await resolveTable((req.params as any).token);
