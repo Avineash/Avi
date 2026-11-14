@@ -4,7 +4,7 @@ import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
 import { lkr, dateTime } from '@/lib/money';
 import { PageHead, useMe, can } from '@/components/shell';
-import { Empty, ErrorBox, Field, Loading, Pill, Sheet, SandboxBadge, Spinner, StatusPill, Toggle, useToast } from '@/components/ui';
+import { Empty, ErrorBox, Field, Loading, Pill, Sheet, Spinner, StatusPill, Toggle, useToast } from '@/components/ui';
 
 export default function Restaurants() {
   const me = useMe(); const w = can(me, 'platform:write'); const toast = useToast();
@@ -63,4 +63,3 @@ function ProviderConfig({ r, w, onClose }: { r: any; w: boolean; onClose: () => 
     </div></Sheet>
   );
 }
-export { SandboxBadge };

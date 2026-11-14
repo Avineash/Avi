@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useApi } from '@/lib/hooks';
-import { lkr } from '@/lib/money';
+import { lkr, lkrCompact } from '@/lib/money';
 import { PageHead, useMe, can } from '@/components/shell';
 import { BarChart, ShareBar, Stat } from '@/components/charts';
 import { Loading, ErrorBox, Empty } from '@/components/ui';
@@ -30,10 +30,10 @@ export default function Overview() {
         {t.paymentsNeedingRefund > 0 && <Link href="/dashboard/payments?tab=payments&needs=1" className="card flex items-center justify-between border-bad/40 bg-bad/5 p-4 text-sm font-semibold text-bad"><span>⚠ {t.paymentsNeedingRefund} payment(s) need a refund (duplicate or mismatched capture)</span><span>Review →</span></Link>}
       </div>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Gross sales" value={lkr(t.gross)} sub={`${t.orders} paid orders`} /><Stat label="Net of refunds" value={lkr(t.net)} sub={t.refunds ? `${lkr(t.refunds)} refunded` : 'No refunds'} />
-        <Stat label="Avg order" value={lkr(t.avg)} sub={`${t.avg_prep_min || '—'} min avg to ready`} /><Stat label="Customer rating" value={t.ratings ? `${t.avgRating} ★` : '—'} sub={`${t.ratings} reviews`} />
+        <Stat label="Gross sales" value={lkr(t.gross, { dec: false })} sub={`${t.orders} paid orders`} /><Stat label="Net of refunds" value={lkr(t.net, { dec: false })} sub={t.refunds ? `${lkr(t.refunds)} refunded` : 'No refunds'} />
+        <Stat label="Avg order" value={lkr(t.avg, { dec: false })} sub={`${t.avg_prep_min || '—'} min avg to ready`} /><Stat label="Customer rating" value={t.ratings ? `${t.avgRating} ★` : '—'} sub={`${t.ratings} reviews`} />
       </div>
-      <section className="card mt-5 p-4 sm:p-5"><h2 className="mb-3 font-extrabold">Daily sales</h2><BarChart bars={bars} series={[{ key: 'gross', name: 'Gross sales', color: 'var(--series-1)' }]} format={(n) => lkr(n)} yLabel="Day" /></section>
+      <section className="card mt-5 p-4 sm:p-5"><h2 className="mb-3 font-extrabold">Daily sales</h2><BarChart bars={bars} series={[{ key: 'gross', name: 'Gross sales', color: 'var(--series-1)' }]} format={(n) => lkr(n)} axis={lkrCompact} yLabel="Day" /></section>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <section className="card p-4 sm:p-5"><h2 className="mb-3 font-extrabold">LankaQR vs card</h2><ShareBar parts={split} format={(n) => lkr(n)} />
           <p className="mt-3 text-xs text-muted">Estimated provider fees in period: <b className="tabular">{lkr(fees, { dec: true })}</b> (sandbox rates are illustrative).</p></section>

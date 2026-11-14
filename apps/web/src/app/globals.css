@@ -44,3 +44,4 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 /* Data-viz series (validated categorical slots 1–2; dark steps selected for the dark surface) */
 :root { --series-1: #2a78d6; --series-2: #eb6834; --grid: 228 226 220; }
 [data-theme="dark"] { --series-1: #3987e5; --series-2: #d95926; --grid: 46 47 53; }
+table th, table td { padding-inline: .6rem; }

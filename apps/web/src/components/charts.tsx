@@ -7,15 +7,15 @@ export interface Bar { label: string; sub?: string; values: Record<string, numbe
 
 /** Stacked/single bar chart. Thin marks with 4px rounded data-ends, 2px surface gap between stacked segments,
  *  recessive grid, hover tooltip, legend for ≥2 series, and a table view so colour is never the only channel. */
-export function BarChart({ bars, series, format, height = 200, yLabel }: { bars: Bar[]; series: Series[]; format: (n: number) => string; height?: number; yLabel?: string }) {
+export function BarChart({ bars, series, format, axis, height = 220, yLabel }: { bars: Bar[]; series: Series[]; format: (n: number) => string; axis?: (n: number) => string; height?: number; yLabel?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const totals = bars.map((b) => series.reduce((s, x) => s + (b.values[x.key] ?? 0), 0));
   const max = Math.max(1, ...totals);
   const nice = (() => { const p = 10 ** Math.floor(Math.log10(max)); const m = max / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; })();
-  const W = 640, H = height, L = 8, R = 8, T = 10, B = 26, iw = W - L - R, ih = H - T - B;
+  const W = 640, H = height, L = 8, R = 8, T = 24, B = 26, iw = W - L - R, ih = H - T - B;
   const bw = Math.min(28, (iw / Math.max(1, bars.length)) * 0.55), step = iw / Math.max(1, bars.length);
-  const ticks = [0, 0.5, 1].map((f) => f * nice);
+  const ticks = [0, 0.5, 1].map((f) => f * nice); const ax = axis ?? format;
   const every = Math.ceil(bars.length / 8);
 
   if (table) return (
@@ -30,7 +30,7 @@ export function BarChart({ bars, series, format, height = 200, yLabel }: { bars:
         {series.length > 1 ? <ul className="flex flex-wrap gap-4 text-sm" aria-label="Legend">{series.map((s) => <li key={s.key} className="flex items-center gap-2"><span className="h-3 w-3 rounded-[3px]" style={{ background: s.color }} />{s.name}</li>)}</ul> : <span />}
         <button className="btn btn-ghost btn-sm" onClick={() => setTable(true)}>View as table</button></div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Bar chart, ${bars.length} periods. Highest ${format(max)}.`} onMouseLeave={() => setHover(null)}>
-        {ticks.map((t, i) => { const y = T + ih - (t / nice) * ih; return <g key={i}><line x1={L} x2={W - R} y1={y} y2={y} stroke="rgb(var(--grid))" strokeWidth="1" /><text x={L} y={y - 4} fontSize="11" fill="rgb(var(--muted))">{format(t)}</text></g>; })}
+        {ticks.map((t, i) => { const y = T + ih - (t / nice) * ih; return <g key={i}><line x1={L} x2={W - R} y1={y} y2={y} stroke="rgb(var(--grid))" strokeWidth="1" />{i > 0 && <text x={L} y={y - 5} fontSize="11" fill="rgb(var(--muted))" stroke="rgb(var(--surface))" strokeWidth="4" paintOrder="stroke" strokeLinejoin="round">{ax(t)}</text>}</g>; })}
         {bars.map((b, i) => {
           const cx0 = L + step * i + step / 2; let y = T + ih; const segs = series.filter((s) => (b.values[s.key] ?? 0) > 0);
           return (
@@ -73,6 +73,6 @@ export function ShareBar({ parts, format }: { parts: { name: string; color: stri
 }
 
 export const Stat = ({ label, value, sub, tone, href }: { label: string; value: string; sub?: string; tone?: 'bad' | 'warn'; href?: string }) => {
-  const body = <><div className="text-xs font-bold uppercase tracking-wide text-muted">{label}</div><div className={cx('mt-1 font-display text-2xl font-extrabold tabular sm:text-3xl', tone === 'bad' && 'text-bad', tone === 'warn' && 'text-warn')}>{value}</div>{sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}</>;
+  const body = <><div className="text-xs font-bold uppercase tracking-wide text-muted">{label}</div><div className={cx('mt-1 whitespace-nowrap font-display text-xl font-extrabold tabular sm:text-2xl lg:text-3xl', tone === 'bad' && 'text-bad', tone === 'warn' && 'text-warn')}>{value}</div>{sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}</>;
   return href ? <a href={href} className="card block p-4 transition hover:-translate-y-0.5">{body}</a> : <div className="card p-4">{body}</div>;
 };

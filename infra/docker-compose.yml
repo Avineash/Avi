@@ -1,0 +1,36 @@
+# Self-contained stack: Postgres + API + Web + Caddy (TLS, single origin).
+#   cp infra/.env.example infra/.env   # then edit
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build
+# NOTE: written for staging/small production. Not built in the authoring sandbox (no Docker daemon there).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment: { POSTGRES_USER: tableflow, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set in .env}", POSTGRES_DB: tableflow }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U tableflow"], interval: 5s, retries: 10 }
+  api:
+    build: { context: .., dockerfile: infra/Dockerfile.api }
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgres://tableflow:${POSTGRES_PASSWORD}@db:5432/tableflow"
+      JWT_SECRET: "${JWT_SECRET:?}"
+      SECRETS_KEY: "${SECRETS_KEY:?}"
+      PUBLIC_URL: "https://${DOMAIN:?}"
+      ALLOW_SANDBOX: "${ALLOW_SANDBOX:-false}"
+      UPLOAD_DIR: /data/uploads
+    volumes: [uploads:/data/uploads]
+  web:
+    build: { context: .., dockerfile: infra/Dockerfile.web }
+    restart: unless-stopped
+    depends_on: [api]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: { DOMAIN: "${DOMAIN:?}" }
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data]
+    depends_on: [api, web]
+volumes: { pgdata: {}, uploads: {}, caddy_data: {} }

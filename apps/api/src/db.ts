@@ -1,4 +1,6 @@
 import pg from 'pg';
+import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { migrations } from './migrations.js';
 import type { Config } from './config.js';
@@ -82,7 +84,8 @@ export async function openDb(cfg: Config): Promise<Db> {
     db = new PgDb(new pg.Pool({ connectionString: cfg.databaseUrl, max: 10, idleTimeoutMillis: 30_000 }));
   } else {
     if (cfg.env === 'production') throw new Error('Embedded PGlite is for development only');
-    const dir = cfg.pgliteDir === 'memory' ? undefined : cfg.pgliteDir;
+    const dir = cfg.pgliteDir === 'memory' ? undefined : resolve(cfg.pgliteDir);
+    if (dir) mkdirSync(dirname(dir), { recursive: true });
     db = new LiteDb(new PGlite(dir));
   }
   await migrate(db);
