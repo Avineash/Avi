@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/app/actions/auth";
 import { SANDBOX_NOTICE } from "@/lib/domain/legal";
 import { isSandbox } from "@/lib/providers/payments";
+import { isFull } from "@/lib/phase";
 
 export function Logo({ light }: { light?: boolean }) {
   return (
@@ -26,12 +27,17 @@ export function SandboxBanner() {
   );
 }
 
-const NAV = [
+const NAV_FULL = [
   { href: "/hotels", label: "Hotels" }, { href: "/restaurants", label: "Dining" }, { href: "/events", label: "Events" },
   { href: "/how-it-works", label: "How it works" }, { href: "/partners", label: "For partners" },
 ];
+const NAV_MARKET = [
+  { href: "/hotels", label: "Hotels" }, { href: "/restaurants", label: "Dining" }, { href: "/events", label: "Events" },
+  { href: "/sell", label: "Sell" }, { href: "/how-it-works", label: "How it works" },
+];
 
 export async function SiteHeader() {
+  const NAV = isFull() ? NAV_FULL : NAV_MARKET;
   const user = await getUser();
   let unread = 0;
   if (user) unread = Number((await (await getDb()).query<any>("select count(*)::int n from notifications where user_id = $1 and read_at is null", [user.id])).rows[0].n);
@@ -45,10 +51,11 @@ export async function SiteHeader() {
         <div className="flex items-center gap-1.5">
           {user ? (
             <>
-              <Link href="/account/saved" aria-label="Saved experiences" className="hidden rounded-full p-2 hover:bg-navy-900/5 sm:block"><Heart className="size-[18px]" /></Link>
-              <Link href="/account/offers" aria-label={`Offers and notifications${unread ? ` (${unread} unread)` : ""}`} className="relative rounded-full p-2 hover:bg-navy-900/5">
+              <Link href="/account/saved" aria-label="Saved listings" className="hidden rounded-full p-2 hover:bg-navy-900/5 sm:block"><Heart className="size-[18px]" /></Link>
+              <Link href={isFull() ? "/account/offers" : "/account/notifications"} aria-label={`Offers and notifications${unread ? ` (${unread} unread)` : ""}`} className="relative rounded-full p-2 hover:bg-navy-900/5">
                 <Bell className="size-[18px]" />{unread > 0 && <span className="absolute right-0 top-0 grid size-4 place-items-center rounded-full bg-gold-500 text-[10px] font-bold text-navy-950">{unread > 9 ? "9+" : unread}</span>}
               </Link>
+              {!isFull() && <Button asChild size="sm" variant="gold" className="hidden sm:inline-flex"><Link href="/sell/new">Sell</Link></Button>}
               <Button asChild size="sm" variant="default"><Link href={homeFor(user.role)}><User /> {user.name.split(" ")[0]}</Link></Button>
               <form action={logoutAction} className="hidden sm:block"><Button size="sm" variant="ghost" type="submit">Sign out</Button></form>
             </>
@@ -85,11 +92,11 @@ export function SiteFooter() {
       <div className="container-page relative grid gap-12 pb-10 pt-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Logo light />
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-ivory/70">Last-minute hotel rooms, tables and tickets from verified Melbourne venues — priced honestly, with every fee shown up front.</p>
-          <p className="mt-6 max-w-sm text-xs leading-relaxed text-ivory/45">Resale and reallocation are only available for inventory listed by partners registered and approved on Eleventh Hour. Prices in AUD, GST included.</p>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-ivory/70">Buy and sell last-minute hotel stays, restaurant tables and event tickets — protected by escrow, priced honestly, with every fee shown up front.</p>
+          <p className="mt-6 max-w-sm text-xs leading-relaxed text-ivory/45">Resale is only possible for venues registered with Eleventh Hour. Prices in AUD; platform fees include GST.</p>
         </div>
-        {col("Explore", [["/hotels", "Hotels"], ["/restaurants", "Dining"], ["/events", "Events"], ["/search", "Search all"]])}
-        {col("Company", [["/about", "About us"], ["/how-it-works", "How it works"], ["/partners", "Become a partner"], ["/contact", "Contact & support"]])}
+        {col("Buy", [["/hotels", "Hotels"], ["/restaurants", "Dining"], ["/events", "Events"], ["/search", "Search all"]])}
+        {col(isFull() ? "Company" : "Sell & help", isFull() ? [["/about", "About us"], ["/how-it-works", "How it works"], ["/partners", "Become a partner"], ["/contact", "Contact & support"]] : [["/sell", "Sell a booking"], ["/how-it-works", "How it works"], ["/about", "About us"], ["/contact", "Contact & support"]])}
         {col("Legal", [["/legal/terms", "Terms"], ["/legal/privacy", "Privacy"], ["/legal/cancellation", "Cancellation policy"], ["/legal/refunds", "Refund policy"]])}
       </div>
       <p aria-hidden className="select-none whitespace-nowrap px-4 text-center font-serif leading-[.8] tracking-[-0.05em] text-transparent [-webkit-text-stroke:1px_rgba(224,203,151,.28)]" style={{ fontSize: "clamp(3.5rem, 15.5vw, 15rem)" }}>Eleventh Hour</p>

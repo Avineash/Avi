@@ -11,7 +11,7 @@ import { hours, melbDay, melbToDate } from "@/lib/util";
 
 export const DEMO_PASSWORD = "Password123!";
 
-function abnFor(n: number): string {
+export function abnFor(n: number): string {
   for (let prefix = 10 + (n % 80); prefix < 100; prefix++) {
     const body = String(100_000_000 + n * 7919).slice(0, 9);
     const abn = `${prefix}${body}`;
@@ -20,7 +20,7 @@ function abnFor(n: number): string {
   return "51824753556";
 }
 /** Next Melbourne wall-clock hh:mm at or after now + offsetH (so listings look like real check-ins / seatings / sessions). */
-function snap(offsetH: number, hh: number, mm = 0): Date {
+export function snap(offsetH: number, hh: number, mm = 0): Date {
   const base = new Date(Date.now() + hours(offsetH));
   const at = (d: Date) => melbToDate(`${melbDay(d)}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
   let d = at(base);
@@ -28,20 +28,20 @@ function snap(offsetH: number, hh: number, mm = 0): Date {
   return d;
 }
 const nextDay = (d: Date, hh: number) => melbToDate(`${melbDay(new Date(d.getTime() + hours(24)))}T${String(hh).padStart(2, "0")}:00`);
-const art = (slug: string, kind: string) => `/api/art/${slug}?kind=${kind}`;
+export const art = (slug: string, kind: string) => `/api/art/${slug}?kind=${kind}`;
 const pick = <T,>(a: T[], i: number) => a[i % a.length];
 
-interface HotelSpec { name: string; suburb: string; address: string; lat: number; lng: number; stars: number; blurb: string; amenities: string[]; rooms: Array<{ name: string; orig: number; beds: string; sqm: number; sleeps: number }> }
-interface RestSpec { name: string; suburb: string; address: string; lat: number; lng: number; cuisine: string; blurb: string; amenities: string[]; offers: Array<{ name: string; orig: number; menu: string }> }
-interface EventSpec { name: string; suburb: string; address: string; lat: number; lng: number; blurb: string; amenities: string[]; sessions: Array<{ name: string; orig: number; hours: number; kind: string }>; policy: string }
+export interface HotelSpec { name: string; suburb: string; address: string; lat: number; lng: number; stars: number; blurb: string; amenities: string[]; rooms: Array<{ name: string; orig: number; beds: string; sqm: number; sleeps: number }> }
+export interface RestSpec { name: string; suburb: string; address: string; lat: number; lng: number; cuisine: string; blurb: string; amenities: string[]; offers: Array<{ name: string; orig: number; menu: string }> }
+export interface EventSpec { name: string; suburb: string; address: string; lat: number; lng: number; blurb: string; amenities: string[]; sessions: Array<{ name: string; orig: number; hours: number; kind: string }>; policy: string }
 
-const HOTELS_A: HotelSpec[] = [
+export const HOTELS_A: HotelSpec[] = [
   { name: "The Laneway Hotel", suburb: "Melbourne CBD", address: "112 Flinders Lane", lat: -37.8167, lng: 144.9667, stars: 4, blurb: "A design-led hotel above the laneway cafés, with a candle-lit rooftop bar and the city's best breakfast just downstairs.", amenities: ["Rooftop bar", "Fitness studio", "Free Wi-Fi", "24h concierge", "Pet friendly"],
     rooms: [{ name: "Deluxe King", orig: 32000, beds: "1 King", sqm: 28, sleeps: 2 }, { name: "Laneway Studio Suite", orig: 46000, beds: "1 King + sofa bed", sqm: 42, sleeps: 3 }] },
   { name: "Southbank Riverside Suites", suburb: "Southbank", address: "8 Southgate Avenue", lat: -37.8226, lng: 144.9644, stars: 5, blurb: "Floor-to-ceiling views of the Yarra and the skyline, steps from the NGV, Arts Centre and Crown Promenade.", amenities: ["Infinity pool", "Spa", "River views", "Kitchenette", "Valet parking"],
     rooms: [{ name: "River View King", orig: 52000, beds: "1 King", sqm: 36, sleeps: 2 }, { name: "Executive Suite", orig: 78000, beds: "1 King + lounge", sqm: 64, sleeps: 4 }] },
 ];
-const HOTELS_B: HotelSpec[] = [
+export const HOTELS_B: HotelSpec[] = [
   { name: "St Kilda Esplanade Boutique", suburb: "St Kilda", address: "54 The Esplanade", lat: -37.8676, lng: 144.9747, stars: 4, blurb: "Salt-air mornings, a bay-view terrace and the St Kilda foreshore on your doorstep.", amenities: ["Bay views", "Terrace bar", "Bike hire", "Free Wi-Fi"],
     rooms: [{ name: "Bayview Queen", orig: 29000, beds: "1 Queen", sqm: 24, sleeps: 2 }, { name: "Garden Courtyard Room", orig: 24000, beds: "1 Queen", sqm: 22, sleeps: 2 }] },
   { name: "Fitzroy Press House", suburb: "Fitzroy", address: "27 Brunswick Street", lat: -37.7993, lng: 144.9788, stars: 4, blurb: "A restored printing house turned boutique stay, surrounded by Fitzroy's galleries, bars and vintage shops.", amenities: ["Lobby café", "Free Wi-Fi", "Record players in rooms", "Bike hire"],
@@ -49,14 +49,14 @@ const HOTELS_B: HotelSpec[] = [
   { name: "Yarra Terrace Hotel", suburb: "South Yarra", address: "300 Toorak Road", lat: -37.8386, lng: 144.993, stars: 4, blurb: "Quietly luxurious rooms between the Botanic Gardens and Chapel Street's boutiques.", amenities: ["Heated pool", "Gym", "Free Wi-Fi", "Room service"],
     rooms: [{ name: "Garden King", orig: 31000, beds: "1 King", sqm: 30, sleeps: 2 }, { name: "Twin Deluxe", orig: 28000, beds: "2 Singles", sqm: 28, sleeps: 2 }] },
 ];
-const RESTAURANTS: RestSpec[] = [
+export const RESTAURANTS: RestSpec[] = [
   { name: "Saffron & Smoke", suburb: "Fitzroy", address: "91 Gertrude Street", lat: -37.7989, lng: 144.9782, cuisine: "Modern Indian", blurb: "Wood-fire cooking, hand-ground spices and a tasting menu that rewards the curious.", amenities: ["Wine pairing", "Vegetarian friendly", "Chef's counter"], offers: [{ name: "Chef's Tasting Menu for two", orig: 32000, menu: "7 courses" }, { name: "Sunday Feast for two", orig: 24000, menu: "Shared banquet" }] },
   { name: "Osteria Piccolo", suburb: "Carlton", address: "212 Lygon Street", lat: -37.7995, lng: 144.9667, cuisine: "Italian", blurb: "Hand-rolled pasta and Piedmontese wines in a candle-lit Lygon Street room.", amenities: ["Wine list", "Pre-theatre menu", "Private dining"], offers: [{ name: "Pasta Degustazione for two", orig: 18000, menu: "5 courses" }, { name: "Pre-theatre Set Menu for two", orig: 12000, menu: "3 courses" }] },
   { name: "Aster Laneway Dining", suburb: "Melbourne CBD", address: "15 Centre Place", lat: -37.8139, lng: 144.969, cuisine: "Contemporary Australian", blurb: "Native ingredients, a vertical wine cellar and a six-seat chef's bar hidden in the lanes.", amenities: ["Chef's bar", "Native ingredients", "Sommelier"], offers: [{ name: "Chef's Table Experience for two", orig: 44000, menu: "9 courses + pairing" }, { name: "Laneway Lunch for two", orig: 14000, menu: "3 courses" }] },
   { name: "Kōji Counter", suburb: "Richmond", address: "6 Bridge Road", lat: -37.824, lng: 144.9985, cuisine: "Japanese omakase", blurb: "Twelve seats, one chef and the freshest seasonal fish in Melbourne.", amenities: ["Omakase", "Sake pairing", "Counter seating"], offers: [{ name: "Omakase for two", orig: 56000, menu: "14 pieces + dessert" }] },
   { name: "The Bluestone Table", suburb: "Brunswick", address: "340 Sydney Road", lat: -37.7660, lng: 144.9611, cuisine: "Wine bar & shared plates", blurb: "A converted bluestone warehouse with long communal tables and a list of 200 local wines.", amenities: ["Natural wine", "Communal tables", "Live jazz Thursdays"], offers: [{ name: "Shared Plates Feast for two", orig: 15000, menu: "6 plates + dessert" }] },
 ];
-const EVENTS: EventSpec[] = [
+export const EVENTS: EventSpec[] = [
   { name: "Rooftop Cinema Night", suburb: "Melbourne CBD", address: "252 Swanston Street (rooftop)", lat: -37.815, lng: 144.966, blurb: "Classic films under the stars with the city skyline as your backdrop. Blankets and headphones provided.", amenities: ["Bar & street food", "Blankets provided", "Silent-disco headphones"], policy: "flexible", sessions: [{ name: "Casablanca (35mm)", orig: 4200, hours: 8, kind: "Film screening" }, { name: "Spirited Away", orig: 3800, hours: 56, kind: "Film screening" }] },
   { name: "Yarra Valley Sunset Wine Tour", suburb: "Healesville", address: "Depart Federation Square", lat: -37.656, lng: 145.519, blurb: "A small-group afternoon through three cellar doors with a private driver and a cheese board at sunset.", amenities: ["Return transfer from the city", "Three cellar doors", "Cheese board"], policy: "moderate", sessions: [{ name: "Sunset cellar-door tour", orig: 16500, hours: 30, kind: "Tour" }] },
   { name: "Comedy Cellar Live", suburb: "Fitzroy", address: "45 Johnston Street", lat: -37.801, lng: 144.978, blurb: "Four of the country's sharpest stand-ups in a basement bar built for belly laughs.", amenities: ["Bar", "Late licence", "General admission"], policy: "non_refundable", sessions: [{ name: "Friday night showcase", orig: 5500, hours: 20, kind: "Live comedy" }, { name: "Saturday late show", orig: 6000, hours: 44, kind: "Live comedy" }] },

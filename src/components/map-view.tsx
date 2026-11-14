@@ -14,7 +14,7 @@ const LANDMARKS = [
 ];
 const proj = (lat: number, lng: number) => ({ x: ((lng - B.w) / (B.e - B.w)) * 100, y: ((B.n - lat) / (B.n - B.s)) * 100 });
 
-export function MapView({ pins, className }: { pins: Pin[]; className?: string }) {
+export function MapView({ pins, className, basePath = "/listings" }: { pins: Pin[]; className?: string; basePath?: string }) {
   const [active, setActive] = useState<string | null>(null);
   const inside = pins.filter((p) => p.lat <= B.n && p.lat >= B.s && p.lng >= B.w && p.lng <= B.e);
   const outside = pins.filter((p) => !inside.includes(p));
@@ -45,7 +45,7 @@ export function MapView({ pins, className }: { pins: Pin[]; className?: string }
           <p className="text-xs text-navy-900/60">{sel.suburb} · {sel.count} listing{sel.count > 1 ? "s" : ""}</p>
           <p className="font-serif text-base font-semibold">{sel.name}</p>
           <p className="text-sm">{sel.soldOut ? "Sold out — join the waitlist" : <>From <strong>{aud(sel.fromCents, { whole: true })}</strong></>}</p>
-          <Link href={`/listings/${sel.listingId}`} className="mt-1 inline-block text-sm font-semibold text-gold-700 underline">View</Link>
+          <Link href={`${basePath}/${sel.listingId}`} className="mt-1 inline-block text-sm font-semibold text-gold-700 underline">View</Link>
         </div>
       )}
     </div>

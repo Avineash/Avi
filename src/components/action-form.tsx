@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useEffect, useRef } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import type { Result } from "@/app/actions/_util";
 
@@ -16,7 +16,15 @@ export function ActionForm({
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state?.ok && resetOnSuccess) ref.current?.reset(); }, [state, resetOnSuccess]);
   return (
-    <form ref={ref} action={formAction} className={className} onSubmit={confirm ? (e) => { if (!window.confirm(confirm)) e.preventDefault(); } : undefined}>
+    // Submitted manually (not via the `action` prop) so React 19 doesn't reset the fields when the action returns an error —
+    // people must never lose what they typed (or the file they picked) because of a validation message.
+    <form ref={ref} className={className} onSubmit={(e) => {
+      e.preventDefault();
+      if (confirm && !window.confirm(confirm)) return;
+      const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+      const fd = new FormData(e.currentTarget, submitter);
+      startTransition(() => formAction(fd));
+    }}>
       {children}
       {!hideSubmit && <Button type="submit" variant={variant} size={size} disabled={pending} className={submitClassName} aria-busy={pending}>{pending ? "Working…" : submit ?? "Save"}</Button>}
       <div aria-live="polite" className="empty:hidden">

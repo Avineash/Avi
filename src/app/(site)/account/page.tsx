@@ -8,10 +8,12 @@ import { getDb } from "@/lib/db";
 import { customerStats } from "@/lib/domain/analytics";
 import { searchListings } from "@/lib/domain/search";
 import { aud, fmtDateTime } from "@/lib/util";
+import { isFull } from "@/lib/phase";
+import { MarketDashboard } from "@/components/market-dashboard";
 
 export const metadata: Metadata = { title: "My account" };
 
-export default async function Dashboard() {
+async function FullDashboard() {
   const u = await requirePermission("customer:account", "/account");
   const db = await getDb();
   const s = await customerStats(db, u.id);
@@ -41,4 +43,8 @@ export default async function Dashboard() {
       {recs.length > 0 && <section className="mt-8"><h2 className="mb-4 text-xl font-semibold">Recommended for you</h2><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{recs.map((l) => <ListingCard key={l.id} l={l} signedIn />)}</div></section>}
     </>
   );
+}
+
+export default async function Dashboard() {
+  return isFull() ? <FullDashboard /> : <MarketDashboard />;
 }

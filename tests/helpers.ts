@@ -65,3 +65,49 @@ export async function unitStatuses(listingId: string) {
   const db = await getDb();
   return (await db.query<any>("select label, status from inventory_units where listing_id = $1 order by label", [listingId])).rows.map((r) => r.status as string);
 }
+
+// ───────── peer resale helpers ─────────
+import { registerPartner, registerVenue } from "@/lib/domain/registry";
+import { becomeSeller, createResaleCheckout, createResaleListing } from "@/lib/domain/resale";
+
+export async function enableResale(on = true) {
+  const db = await getDb();
+  await setSetting(db, "features.peer_resale", { enabled: on, legal_review_ref: on ? "TEST-LEGAL-RESALE" : null }, null);
+}
+
+export async function mkRegisteredVenue(o: { category?: "hotel" | "restaurant" | "event"; resaleAllowed?: boolean; maxMarkupBps?: number; partnerStatus?: string } = {}) {
+  const db = await getDb();
+  const category = o.category ?? "hotel";
+  const partnerId = await registerPartner(db, { businessName: `Reg ${Math.random().toString(36).slice(2, 6)}`, abn: "51824753556", category, contactEmail: `reg-${Math.random().toString(36).slice(2, 8)}@test.example` });
+  const venueId = await registerVenue(db, { partnerId, name: "Registered Venue", address: "1 Flinders Ln", suburb: "Melbourne CBD", lat: -37.81, lng: 144.96, resaleAllowed: o.resaleAllowed, maxMarkupBps: o.maxMarkupBps });
+  if (o.partnerStatus) await db.query("update partners set status = $2 where id = $1", [partnerId, o.partnerStatus]);
+  return { partnerId, venueId, category };
+}
+
+export async function mkSeller(name = "Sam Seller") {
+  const id = await mkUser("customer", name);
+  await becomeSeller({ userId: id, displayName: name, phone: "+61400111222", acceptTerms: true });
+  return id;
+}
+
+const PROOF = { fileName: "confirmation.pdf", mime: "application/pdf", content: Buffer.from("%PDF-1.4 test") };
+let refN = 0;
+export async function listItem(sellerId: string, venue: { venueId: string; category: string }, o: Partial<Parameters<typeof createResaleListing>[0]> = {}) {
+  return createResaleListing({
+    sellerId, venueId: venue.venueId, title: venue.category === "event" ? "Friday showcase" : "Deluxe King", startsAt: new Date(Date.now() + hours(30)), endsAt: new Date(Date.now() + hours(54)),
+    quantity: 1, originalUnitCents: 20000, askUnitCents: 18000, transferMethod: "name_change", bookingReference: `BK${++refN}${Math.random().toString(36).slice(2, 6)}`,
+    proof: PROOF, declarations: { holder: true, permitted: true, deliver: true, accurate: true }, ...o,
+  });
+}
+
+export async function checkout(buyerId: string, listingId: string, o: { quantity?: number; key?: string } = {}) {
+  return createResaleCheckout({ buyerId, listingId, quantity: o.quantity ?? 1, idempotencyKey: o.key ?? `rs-${++k}-${Math.random()}` });
+}
+export async function buy(buyerId: string, listingId: string, o: { quantity?: number } = {}) {
+  const r = await checkout(buyerId, listingId, o);
+  await sandboxPay({ orderId: r.orderId, customerId: buyerId, cardNumber: "4242424242424242" });
+  return r;
+}
+export async function roRow(id: string) {
+  return (await (await getDb()).query<any>("select * from resale_orders where id = $1", [id])).rows[0];
+}

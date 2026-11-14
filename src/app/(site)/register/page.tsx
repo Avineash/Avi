@@ -12,7 +12,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
   return (
     <div className="container-page max-w-lg py-14">
       <h1 className="text-3xl font-semibold">Create your account</h1>
-      <p className="mt-1 text-navy-900/70">Book last-minute stays, tables and tickets — and join waitlists.</p>
+      <p className="mt-1 text-navy-900/70">Buy last-minute stays, tables and tickets — or sell the ones you can\u2019t use.</p>
       <Card className="mt-6"><CardBody className="space-y-5 p-6">
         <ActionForm action={registerAction} submit="Create account" size="lg" submitClassName="w-full" className="space-y-4">
           <input type="hidden" name="next" value={next ?? ""} />

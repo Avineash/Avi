@@ -134,7 +134,7 @@ export async function submitReview(a: { customerId: string; reservationId: strin
 }
 
 // ───────────── Reconciliation ─────────────
-/** Cash identity: captured − refunded − compensation == Σ partner ledger + Σ platform fees. Must always hold. */
+/** Cash identity: captured − refunded − compensation == Σ partner ledger + Σ seller ledger (incl. escrow) + Σ platform fees. Must always hold. */
 export async function reconcile(c: Queryable) {
   const n = async (sql: string) => Number((await c.query<any>(sql)).rows[0].s);
   const captured = await n("select coalesce(sum(captured_cents),0)::bigint s from payments");
@@ -143,6 +143,7 @@ export async function reconcile(c: Queryable) {
   const ledger = await n("select coalesce(sum(amount_cents),0)::bigint s from ledger_entries");
   const fees = await n("select coalesce(sum(amount_cents),0)::bigint s from platform_fees");
   const paidOut = await n("select coalesce(sum(net_cents),0)::bigint s from partner_payouts where status = 'paid'");
+  const sellerLedger = await n("select coalesce(sum(amount_cents),0)::bigint s from seller_ledger");
   const held = captured - refunded - compensation;
-  return { captured, refunded, compensation, partnerLedger: ledger, platformFees: fees, paidOut, cashHeld: held, difference: held - (ledger + fees), balanced: held === ledger + fees };
+  return { captured, refunded, compensation, partnerLedger: ledger, sellerLedger, platformFees: fees, paidOut, cashHeld: held, difference: held - (ledger + sellerLedger + fees), balanced: held === ledger + sellerLedger + fees };
 }

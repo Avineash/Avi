@@ -98,9 +98,9 @@ async function boot(): Promise<Db> {
     if (rows[0]?.t) {
       const { rows: c } = await db.query<{ n: number }>("select count(*)::int as n from users");
       if (c[0].n === 0) {
-        const { seedDemo } = await import("./seed");
         __setDb(Promise.resolve(db)); // seed uses domain services which call getDb()
-        await seedDemo();
+        if (process.env.APP_PHASE === "full") { const { seedDemo } = await import("./seed"); await seedDemo(); }
+        else { const { seedResaleDemo } = await import("./seed-resale"); await seedResaleDemo(); }
       }
     }
   }

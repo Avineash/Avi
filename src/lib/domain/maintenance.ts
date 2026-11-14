@@ -5,10 +5,11 @@ import { expireBuybacks, finishBuyback } from "./buyback";
 import { repriceAuto } from "./pricing";
 import { flushNotifications } from "./notifications";
 import { transition } from "./inventory";
+import { runResaleMaintenance } from "./resale";
 
 export interface MaintenanceSummary {
   expiredOrders: number; expiredOffers: number; expiredBuybacks: number; retriedRefunds: number; resumedBuybacks: number;
-  completed: number; repriced: number; closedListings: number; strayHolds: number; notifications: number;
+  completed: number; repriced: number; resale: { listingsExpired: number; undeliveredRefunded: number; refundsResumed: number; released: number }; closedListings: number; strayHolds: number; notifications: number;
 }
 
 /**
@@ -17,7 +18,7 @@ export interface MaintenanceSummary {
  */
 export async function runMaintenance(now = new Date()): Promise<MaintenanceSummary> {
   const db = await getDb();
-  const s: MaintenanceSummary = { expiredOrders: 0, expiredOffers: 0, expiredBuybacks: 0, retriedRefunds: 0, resumedBuybacks: 0, completed: 0, repriced: 0, closedListings: 0, strayHolds: 0, notifications: 0 };
+  const s: MaintenanceSummary = { expiredOrders: 0, expiredOffers: 0, expiredBuybacks: 0, retriedRefunds: 0, resumedBuybacks: 0, completed: 0, repriced: 0, resale: { listingsExpired: 0, undeliveredRefunded: 0, refundsResumed: 0, released: 0 }, closedListings: 0, strayHolds: 0, notifications: 0 };
 
   // 1. unpaid orders whose hold ran out → inventory released (or passed to the next waitlisted customer)
   for (const o of (await db.query<any>("select id from orders where status = 'pending_payment' and expires_at <= $1", [now])).rows) { await expireOrder(o.id, "hold expired"); s.expiredOrders++; }
@@ -50,6 +51,9 @@ export async function runMaintenance(now = new Date()): Promise<MaintenanceSumma
     `select u.id from inventory_units u where u.status = 'held' and u.reserved_until < $1
         and not exists (select 1 from reservations r where r.unit_id = u.id and r.status = 'pending_payment')`, [new Date(now.getTime() - 60_000)])).rows;
   for (const u of stray) { await inTx((tx) => transition(tx, u.id, "available", { reason: "orphaned hold swept" })); s.strayHolds++; }
+
+  // 8. peer resale: expire stale listings, refund undelivered sales, auto-release escrow
+  s.resale = await runResaleMaintenance(now);
 
   s.notifications = await flushNotifications();
   return s;

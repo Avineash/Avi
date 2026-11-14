@@ -1,8 +1,8 @@
 import type { Queryable } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 
-export type FeePayer = "partner" | "customer";
-export type FeeFlow = "booking" | "buyback" | "resale";
+export type FeePayer = "partner" | "customer" | "seller";
+export type FeeFlow = "booking" | "buyback" | "resale" | "peer_resale";
 
 export interface FeeRule {
   id: string; payer: FeePayer; applies_to: FeeFlow; scope: "global" | "category" | "partner";
@@ -46,4 +46,13 @@ export function describeRule(r: Pick<FeeRule, "kind" | "rate_bps" | "fixed_cents
   const pct = `${(r.rate_bps / 100).toFixed(r.rate_bps % 100 ? 2 : 0)}%`;
   const fx = `$${(r.fixed_cents / 100).toFixed(2)}`;
   return r.kind === "percentage" ? pct : r.kind === "fixed" ? fx : `${pct} + ${fx}`;
+}
+
+/** Rule book for synchronous fee display (cards, previews). Resolution order matches resolveFeeRule: partner > category > global. */
+export async function feeBook(c: Queryable, payer: FeePayer, flow: FeeFlow) {
+  const rules = (await c.query<FeeRule>("select * from fee_rules where active and payer = $1 and applies_to = $2", [payer, flow])).rows;
+  return (category: string, partnerId: string | null, basis: number) => {
+    const r = rules.find((x) => x.scope === "partner" && x.partner_id === partnerId) ?? rules.find((x) => x.scope === "category" && x.category === category) ?? rules.find((x) => x.scope === "global");
+    return r ? computeFee(r, basis) : 0;
+  };
 }

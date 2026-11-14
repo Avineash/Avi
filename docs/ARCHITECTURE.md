@@ -1,3 +1,5 @@
+> **Note:** this document describes the full multi-vendor platform (`APP_PHASE=full`). The current product is the buyer/seller marketplace — see `docs/BUYER_SELLER.md`; the parked platform is described in `docs/FUTURE_PLAN.md`.
+
 # Eleventh Hour — architecture, journeys & compliance notes
 
 ## 1. Information architecture

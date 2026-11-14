@@ -23,3 +23,29 @@ describe("Melbourne demo seed", () => {
     expect(await n("select count(*)::int n from payments where provider <> 'sandbox'")).toBe(0);
   });
 });
+
+import { seedResaleDemo } from "@/lib/db/seed-resale";
+import { searchResale } from "@/lib/domain/resale";
+
+describe("Buyer/seller demo seed", () => {
+  it("builds registered venues, sellers, listings and purchases in every state, and the books balance", async () => {
+    await freshDb();
+    await seedResaleDemo();
+    const db = await getDb();
+    const n = async (sql: string) => Number((await db.query<any>(sql)).rows[0].n);
+    expect((await reconcile(db)).balanced).toBe(true);
+    expect(await n("select count(*)::int n from resale_listings")).toBeGreaterThanOrEqual(10);
+    expect(await n("select count(distinct category)::int n from resale_listings")).toBe(3);
+    expect(await n("select count(*)::int n from resale_orders where status = 'paid'")).toBe(2);        // sellers must deliver (incl. the sold-out table)
+    expect(await n("select count(*)::int n from resale_orders where status = 'delivered'")).toBe(1);   // buyer must confirm
+    expect(await n("select count(*)::int n from resale_orders where status = 'completed'")).toBe(4);
+    expect(await n("select count(*)::int n from resale_reviews")).toBe(4);
+    expect(await n("select count(*)::int n from payments where provider <> 'sandbox'")).toBe(0);
+    // nothing is listed at the unapproved partner's venue, and the venue that bans resale has no listings
+    expect(await n("select count(*)::int n from resale_listings l join venues v on v.id = l.venue_id join partners p on p.id = v.partner_id where p.status <> 'approved'")).toBe(0);
+    expect(await n("select count(*)::int n from resale_listings l join venues v on v.id = l.venue_id where not v.resale_allowed")).toBe(0);
+    const live = await searchResale({});
+    expect(live.length).toBeGreaterThanOrEqual(10);
+    expect(live.every((l) => l.ask_unit_cents <= Math.floor(l.original_unit_cents * 1.1))).toBe(true);
+  });
+});

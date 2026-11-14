@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, Input, Select } from "@/components/ui/primitives";
 import { getUser } from "@/lib/auth/session";
 import { searchListings, type SearchParams } from "@/lib/domain/search";
+import { isFull } from "@/lib/phase";
+import { ResaleResults } from "@/components/resale-results";
 
 type Sp = Record<string, string | string[] | undefined>;
 const s = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
@@ -20,6 +22,7 @@ export function paramsFrom(sp: Sp, fixedCategory?: SearchParams["category"]): Se
 }
 
 export async function Results({ sp, category, basePath, title }: { sp: Sp; category?: SearchParams["category"]; basePath: string; title: string }) {
+  if (!isFull()) return <ResaleResults sp={sp} category={category} basePath={basePath} title={title} />;
   const user = await getUser();
   const p = paramsFrom(sp, category);
   const items = await searchListings({ ...p, userId: user?.id });

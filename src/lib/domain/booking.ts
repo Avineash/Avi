@@ -86,10 +86,16 @@ export async function onPaymentAuthorized(provider: "sandbox" | "stripe", provid
     if (!p) return { kind: "unknown" as const };
     if (["captured", "partially_refunded", "refunded"].includes(p.status)) return { kind: "done" as const };
     const order = (await tx.query<any>("select * from orders where id = $1 for update", [p.order_id])).rows[0];
-    const res = (await tx.query<any>(
-      "select r.status, u.status as unit_status, u.held_by from reservations r join inventory_units u on u.id = r.unit_id where r.order_id = $1", [p.order_id])).rows;
-    const ok = p.status !== "cancelled" && order.status === "pending_payment" && res.length > 0 &&
-      res.every((r) => r.status === "pending_payment" && r.unit_status === "held" && r.held_by === order.customer_id);
+    let ok: boolean;
+    if (order.source === "resale") {
+      const { resaleCapturable } = await import("./resale"); // peer-resale orders have no inventory units: stock was decremented at checkout
+      ok = p.status !== "cancelled" && (await resaleCapturable(tx, order.id));
+    } else {
+      const res = (await tx.query<any>(
+        "select r.status, u.status as unit_status, u.held_by from reservations r join inventory_units u on u.id = r.unit_id where r.order_id = $1", [p.order_id])).rows;
+      ok = p.status !== "cancelled" && order.status === "pending_payment" && res.length > 0 &&
+        res.every((r) => r.status === "pending_payment" && r.unit_status === "held" && r.held_by === order.customer_id);
+    }
     if (p.status === "requires_payment" || p.status === "cancelled") {
       await tx.query("update payments set status = $2, authorized_at = coalesce(authorized_at, now()) where id = $1", [p.id, ok ? "authorized" : "cancelled"]);
     }
@@ -134,6 +140,11 @@ async function confirmOrder(tx: Tx, paymentId: string) {
   const p = (await tx.query<any>("select * from payments where id = $1 for update", [paymentId])).rows[0];
   if (!p || p.status !== "authorized") return; // already confirmed (idempotent) or voided
   const order = (await tx.query<any>("select * from orders where id = $1 for update", [p.order_id])).rows[0];
+  if (order.source === "resale") {
+    const { confirmResaleOrder } = await import("./resale");
+    await confirmResaleOrder(tx, p, order);
+    return;
+  }
   const rows = (await tx.query<any>(
     `select r.*, l.category, l.title, l.starts_at from reservations r join listings l on l.id = r.listing_id where r.order_id = $1 order by r.created_at, r.id`, [order.id])).rows;
   const flow = partnerFeeFlow(order.source, rows[0].category);
@@ -180,6 +191,7 @@ export async function expireOrder(orderId: string, reason: string, force = false
     if (!force && p?.status === "authorized" && p.authorized_at && Date.now() - new Date(p.authorized_at).getTime() < 5 * 60_000) return; // capture in flight
     await tx.query("update orders set status = $2 where id = $1", [orderId, force ? "failed" : "expired"]);
     await tx.query("update reservations set status = 'expired' where order_id = $1 and status = 'pending_payment'", [orderId]);
+    if (order.source === "resale") { const { expireResaleOrder } = await import("./resale"); await expireResaleOrder(tx, order); }
     if (p && ["requires_payment", "authorized"].includes(p.status)) {
       await tx.query("update payments set status = 'cancelled', failure_reason = coalesce(failure_reason, $2) where id = $1", [p.id, reason]);
       providerRef = p.provider_ref; providerName = p.provider; paymentId = p.id;

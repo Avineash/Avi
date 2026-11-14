@@ -22,7 +22,7 @@ export interface FeatureGate { enabled: boolean; legal_review_ref: string | null
  * Legal gate for regulated features (buyback, automated reallocation, event resale).
  * A feature is only ON when an administrator has switched it on AND recorded a legal-review reference.
  */
-export async function featureOn(c: Queryable, key: "features.buyback" | "features.auto_reallocation" | "features.event_resale"): Promise<boolean> {
+export async function featureOn(c: Queryable, key: "features.buyback" | "features.auto_reallocation" | "features.event_resale" | "features.peer_resale"): Promise<boolean> {
   const g = await getSetting<FeatureGate>(c, key, { enabled: false, legal_review_ref: null });
   return g.enabled === true && !!g.legal_review_ref;
 }
