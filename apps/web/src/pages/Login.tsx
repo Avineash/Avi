@@ -7,7 +7,7 @@ import { useAuth } from '../auth.tsx';
 import { useAppearance } from '../theme/ThemeProvider.tsx';
 import type { PublishedTheme } from '../types.ts';
 
-interface Demo { password: string; accounts: Array<{ email: string; name: string; role: string; company: string; companySlug: string; property: string | null }> }
+interface Demo { password: string; accounts: Array<{ email: string; name: string; role: string; auditAccess: 'auditor' | 'manager' | 'both' | null; company: string; companySlug: string; property: string | null }> }
 
 const ROLE = { company_admin: 'Company admin', property_admin: 'Property admin', manager: 'Manager', employee: 'Employee' } as Record<string, string>;
 
@@ -66,7 +66,7 @@ export function Login({ onBrand }: { onBrand: (c: ThemeConfig | undefined) => vo
               {demo.accounts.map((a) => (
                 <button key={a.email} type="button" className="demo-chip" onClick={() => { setEmail(a.email); setPassword(demo.password); setParams({ company: a.companySlug }); void submit(undefined, { email: a.email, password: demo.password }); }}>
                   <strong>{a.name}</strong>
-                  <span>{ROLE[a.role]} · {a.property ?? a.company}</span>
+                  <span>{a.auditAccess ? `Night ${a.auditAccess === 'both' ? 'auditor + manager' : a.auditAccess}` : ROLE[a.role]} · {a.property ?? a.company}</span>
                 </button>
               ))}
             </div>

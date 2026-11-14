@@ -1,0 +1,9 @@
+{
+  "name": "@staffhub/audit-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Night-audit domain logic shared by server and web: checklist templates, progress, dates, summary, card reconciliation.",
+  "exports": { ".": "./src/index.ts" },
+  "sideEffects": false
+}

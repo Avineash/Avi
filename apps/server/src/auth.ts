@@ -15,6 +15,8 @@ export interface Ctx {
   role: Role;
   name: string;
   email: string;
+  /** Night-audit module access (separate from `role`). */
+  auditAccess: 'auditor' | 'manager' | 'both' | null;
 }
 export type Env = { Variables: { ctx: Ctx; db: DB } };
 
@@ -54,7 +56,7 @@ export function destroySession(db: DB, token: string | undefined) {
   if (token) run(db, 'DELETE FROM sessions WHERE token_hash = ?', sha(token));
 }
 
-interface SessionRow { id: string; company_id: string; property_id: string | null; department_id: string | null; role: Role; name: string; email: string }
+interface SessionRow { id: string; company_id: string; property_id: string | null; department_id: string | null; role: Role; name: string; email: string; audit_access: 'auditor' | 'manager' | 'both' | null }
 
 /** Authenticates the cookie and attaches the tenant context. Also enforces a CSRF header on state-changing requests. */
 export const requireAuth: MiddlewareHandler<Env> = async (c, next) => {
@@ -65,13 +67,13 @@ export const requireAuth: MiddlewareHandler<Env> = async (c, next) => {
   if (!token) throw new HttpError(401, 'unauthenticated', 'Sign in to continue.');
   const db = c.get('db');
   const row = get<SessionRow>(db,
-    `SELECT u.id, u.company_id, u.property_id, u.department_id, u.role, u.name, u.email
+    `SELECT u.id, u.company_id, u.property_id, u.department_id, u.role, u.name, u.email, u.audit_access
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = ? AND s.expires_at > ?`, sha(token), now());
   if (!row) { clearSessionCookie(c); throw new HttpError(401, 'unauthenticated', 'Your session has expired.'); }
   c.set('ctx', {
     userId: row.id, companyId: row.company_id, propertyId: row.property_id, departmentId: row.department_id,
-    role: row.role, name: row.name, email: row.email,
+    role: row.role, name: row.name, email: row.email, auditAccess: row.audit_access,
   });
   await next();
 };

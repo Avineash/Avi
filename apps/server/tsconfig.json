@@ -1,6 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "dist", "rootDir": "src", "types": ["node"], "tsBuildInfoFile": "dist/.tsbuildinfo" },
-  "include": ["src"],
-  "references": [{ "path": "../../packages/theme-core" }]
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": [
+      "node"
+    ],
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../packages/theme-core"
+    },
+    {
+      "path": "../../packages/audit-core"
+    }
+  ]
 }

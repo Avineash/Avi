@@ -5,6 +5,7 @@ import { Button, Icon, type IconName } from '@staffhub/ui';
 import { api } from './api.ts';
 import { AppFrame, type FrameNavItem } from './AppFrame.tsx';
 import { AuthProvider, useAuth } from './auth.tsx';
+import { AuditPage } from './audit/AuditPage.tsx';
 import { BrandAppearance } from './brand/BrandAppearance.tsx';
 import { ROLE_LABEL } from './format.ts';
 import type { PublishedTheme } from './types.ts';
@@ -15,7 +16,7 @@ import { NotificationsPage } from './pages/Notifications.tsx';
 import { RosterPage } from './pages/Roster.tsx';
 import { cacheTheme, readCachedTheme, ThemeProvider, useAppearance } from './theme/ThemeProvider.tsx';
 
-const TITLES: Record<string, string> = { '/': 'Dashboard', '/leave': 'Leave', '/roster': 'Roster', '/notifications': 'Notifications', '/brand': 'Brand & Appearance' };
+const TITLES: Record<string, string> = { '/': 'Dashboard', '/leave': 'Leave', '/roster': 'Roster', '/notifications': 'Notifications', '/audit': 'Night audit', '/brand': 'Brand & Appearance' };
 
 function ModeToggle() {
   const { mode, setUserPref, canOverride } = useAppearance();
@@ -44,6 +45,7 @@ function Layout() {
     { id: '/leave', label: 'Leave', icon: 'calendar', href: '/leave' },
     { id: '/roster', label: 'Roster', icon: 'roster', href: '/roster' },
     { id: '/notifications', label: 'Alerts', icon: 'bell', href: '/notifications', badge: unread ? <span className="nav-badge" aria-label={`${unread} unread`}>{unread}</span> : undefined },
+    ...(me.permissions.nightAudit ? [{ id: '/audit', label: 'Audit', icon: 'moon' as const, href: '/audit' }] : []),
     ...(me.permissions.manageBrand ? [{ id: '/brand', label: 'Brand', icon: 'palette' as const, href: '/brand' }] : []),
   ];
   const title = TITLES[pathname] ?? 'StaffHub';
@@ -73,6 +75,7 @@ function Routed({ onBrand }: { onBrand: (c: ThemeConfig | undefined) => void }) 
         <Route path="leave" element={<LeavePage />} />
         <Route path="roster" element={<RosterPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="audit" element={me?.permissions.nightAudit ? <AuditPage /> : <Navigate to="/" replace />} />
         <Route path="brand" element={me?.permissions.manageBrand ? <BrandAppearance /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

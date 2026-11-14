@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.8",
+    "@staffhub/audit-core": "*",
     "@staffhub/theme-core": "*",
     "hono": "^4.13.18"
   },
-  "devDependencies": { "tsx": "^4.23.15" }
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
 }

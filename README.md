@@ -1,6 +1,6 @@
 # VOCO StaffHub
 
-Workforce management (leave, rosters, notifications) with a **white-label, multi-tenant design system**.
+Workforce management (leave, rosters, notifications) and a **night audit** module, on one site, with a **white-label, multi-tenant design system**.
 Every company, and optionally every property, controls its own visual identity from an in-app
 **Brand & Appearance** screen: no code changes, no redeploy.
 
@@ -12,9 +12,10 @@ Every company, and optionally every property, controls its own visual identity f
 ```bash
 npm install
 npm run dev          # API on :8787, web on http://localhost:5173 (seeded demo data)
-npm test             # 87 tests: theme engine, tenant isolation, versioning, a11y gate, design-system guard
+npm test             # 133 tests: theme engine, night-audit logic, tenant isolation, locking, versioning, a11y gate, design-system guard
 npm run build && npm start   # production: API serves the built web app on http://localhost:8787
-npm run e2e          # optional browser check (needs playwright; see scripts/e2e.cjs)
+npm run e2e          # optional browser checks (need playwright): branding flow
+npm run e2e:audit    # …and the night-audit collaboration flow (run on a freshly seeded DB)
 ```
 
 Requires Node ≥ 22.13 (uses the built-in `node:sqlite`). Data lives in `data/staffhub.db`;
@@ -34,6 +35,27 @@ and `/login?company=aurora` brands the page for that company before anyone signs
 Per property: `<property>.admin@<company>.example`, `<property>.<department>.manager@<company>.example`.
 Employees are listed on the sign-in page.
 
+## Night audit
+
+A second module on the same site: the overnight hotel audit, run per property per date. People with night-audit access see an **Audit**
+item in the same navigation as Leave and Roster; sign-in, tenancy, roles and each company's branding are shared.
+
+- **Checklist** of phases and steps (sub-tasks, cautions, due times, initials, notes, a "system roll" divider), detailed or simplified view, shift summary.
+- **One editor at a time.** The first auditor to open a date holds the edit lock; everyone else gets a live, read-only view. A lock can be taken over,
+  and the previous holder is told immediately. Stale locks (closed laptop) free themselves.
+- **Roles:** night auditor (works the checklist), night manager (sees everything, changes nothing), both (switch between), administrators (always view; manage the checklist and who has access; reopen closed audits).
+- **Card reconciliation tool:** PMS vs terminal totals per card, tolerance, payment-link payments, in whole cents.
+- **Closing** locks the audit as a record. Closing with steps outstanding needs an explicit reason, which stays on the record.
+- **Report files** attach to steps (PDF, image, XLSX, CSV, TXT; type-checked by content) and are deleted after 7 days.
+- **Per-property checklist templates**, versioned. Audits snapshot the checklist they started with.
+- **Management overview** across properties for any date.
+
+Demo audit accounts are on the sign-in page (labelled "Night auditor", "Night manager", "Night auditor + manager").
+
+**Not built (yet):** the Daily Operations Forecast, Company Breakfast and VCC listing tools, parsing PMS/POS export files
+(the card rec is manual entry), the AI checklist assistant, and self-service account requests / password resets.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#6-night-audit-module).
+
 ## What's in the box
 
 | Requirement | Where |
@@ -50,6 +72,7 @@ Employees are listed on the sign-in page.
 
 ```
 packages/theme-core   framework-agnostic engine: schema, validation, presets, inheritance, derivation, WCAG audit, CSS
+packages/audit-core   night-audit domain logic: checklist templates, progress, dates, card reconciliation, summary
 packages/ui           React components driven only by --ds-* tokens (container-query responsive)
 apps/server           Hono + node:sqlite API: auth, tenant-scoped data, versioned brand store
 apps/web              React + Vite app and the Brand & Appearance manager

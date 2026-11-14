@@ -7,7 +7,7 @@ export interface Me {
   company: { id: string; name: string; slug: string };
   property: { id: string; name: string; slug: string } | null;
   department: { id: string; name: string } | null;
-  permissions: { manageBrand: boolean; approveLeave: boolean };
+  permissions: { manageBrand: boolean; approveLeave: boolean; nightAudit: boolean; nightAuditRole: 'auditor' | 'manager' | 'both' | null };
   theme: PublishedTheme;
 }
 export interface Leave {

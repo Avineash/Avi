@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('employee','manager','property_admin','company_admin')),
   appearance_pref TEXT CHECK (appearance_pref IN ('light','dark','system')),
+  -- Night-audit module access, independent of the workforce role: who may run or only view the nightly audit.
+  audit_access TEXT CHECK (audit_access IN ('auditor','manager','both')),
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS users_company ON users(company_id);
@@ -89,6 +91,41 @@ CREATE TABLE IF NOT EXISTS brand_assets (
   bytes BLOB NOT NULL, size INTEGER NOT NULL, sha256 TEXT NOT NULL,
   created_by TEXT REFERENCES users(id), created_at TEXT NOT NULL
 );
+-- Night audit ---------------------------------------------------------------
+-- Checklist templates are versioned per property. A run snapshots the template it started with, so editing the
+-- checklist never rewrites an audit that is in progress or closed.
+CREATE TABLE IF NOT EXISTS audit_templates (
+  id TEXT PRIMARY KEY, company_id TEXT NOT NULL REFERENCES companies(id), property_id TEXT NOT NULL REFERENCES properties(id),
+  version INTEGER NOT NULL, config TEXT NOT NULL, created_by TEXT REFERENCES users(id), created_at TEXT NOT NULL,
+  UNIQUE (property_id, version)
+);
+CREATE TABLE IF NOT EXISTS audit_runs (
+  id TEXT PRIMARY KEY, company_id TEXT NOT NULL REFERENCES companies(id), property_id TEXT NOT NULL REFERENCES properties(id),
+  audit_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+  template_version INTEGER NOT NULL, template TEXT NOT NULL,
+  night_auditor TEXT NOT NULL DEFAULT '', night_manager TEXT NOT NULL DEFAULT '',
+  -- one editor at a time: the holder's token must accompany every write; everyone else sees a read-only view
+  lock_user_id TEXT, lock_name TEXT, lock_token TEXT, lock_heartbeat TEXT,
+  created_by TEXT REFERENCES users(id), created_at TEXT NOT NULL,
+  closed_by TEXT, closed_at TEXT, close_note TEXT,
+  UNIQUE (property_id, audit_date)
+);
+CREATE INDEX IF NOT EXISTS audit_runs_company ON audit_runs(company_id, audit_date);
+CREATE TABLE IF NOT EXISTS audit_steps (
+  run_id TEXT NOT NULL REFERENCES audit_runs(id), step_id TEXT NOT NULL,
+  done INTEGER NOT NULL DEFAULT 0, initials TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', subs TEXT NOT NULL DEFAULT '[]',
+  done_by TEXT, done_at TEXT, updated_at TEXT NOT NULL,
+  PRIMARY KEY (run_id, step_id)
+);
+CREATE TABLE IF NOT EXISTS audit_files (
+  id TEXT PRIMARY KEY, company_id TEXT NOT NULL REFERENCES companies(id), run_id TEXT NOT NULL REFERENCES audit_runs(id),
+  step_id TEXT NOT NULL, name TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, bytes BLOB NOT NULL,
+  uploaded_by TEXT REFERENCES users(id), created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS audit_files_run ON audit_files(run_id);
+CREATE TABLE IF NOT EXISTS audit_ccrec (
+  run_id TEXT PRIMARY KEY REFERENCES audit_runs(id), data TEXT NOT NULL, updated_by TEXT, updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT, company_id TEXT NOT NULL REFERENCES companies(id),
   actor_id TEXT, action TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL
@@ -101,7 +138,16 @@ export function openDb(path: string): DB {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+/** Adds columns introduced after a database was first created (CREATE TABLE IF NOT EXISTS cannot). */
+function migrate(db: DB) {
+  const cols = (db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>).map((c) => c.name);
+  if (!cols.includes('audit_access')) {
+    db.exec("ALTER TABLE users ADD COLUMN audit_access TEXT CHECK (audit_access IN ('auditor','manager','both'))");
+  }
 }
 
 type Row = Record<string, unknown>;

@@ -6,6 +6,8 @@ import {
   clearSessionCookie, clearThrottle, COOKIE, createSession, destroySession, hashPassword, requireAuth, setSessionCookie,
   throttleLogin, verifyPassword, type Env,
 } from './auth.ts';
+import { auditRoutes } from './audit/routes.ts';
+import { hasAuditModule } from './audit/store.ts';
 import { brandRoutes } from './brand/routes.ts';
 import { getAsset, publishedTheme } from './brand/store.ts';
 import { all, get, run, type DB } from './db.ts';
@@ -33,8 +35,15 @@ export function createApp({ db, demo = false }: AppOptions) {
   app.use('/api/*', secureHeaders({ crossOriginResourcePolicy: 'same-origin' }));
   // Large bodies are only legitimate for image upload; everything else is small JSON.
   app.use('/api/brand/assets', bodyLimit({ maxSize: 600 * 1024, onError: (c) => c.json({ error: { code: 'file_too_large', message: 'File too large.' } }, 413) }));
+  app.use('/api/audit/run/*', async (c, next) => {
+    if (c.req.method === 'POST' && c.req.path.endsWith('/files')) {
+      return bodyLimit({ maxSize: 5 * 1024 * 1024 + 4096, onError: (c2) => c2.json({ error: { code: 'file_too_large', message: 'Files are limited to 5 MB.' } }, 413) })(c, next);
+    }
+    await next();
+  });
   app.use('/api/*', async (c, next) => {
-    if (c.req.path !== '/api/brand/assets') {
+    const upload = c.req.path === '/api/brand/assets' || (c.req.method === 'POST' && /^\/api\/audit\/run\/[^/]+\/files$/.test(c.req.path));
+    if (!upload) {
       return bodyLimit({ maxSize: 128 * 1024, onError: (c2) => c2.json({ error: { code: 'too_large', message: 'Request too large.' } }, 413) })(c, next);
     }
     await next();
@@ -83,10 +92,11 @@ export function createApp({ db, demo = false }: AppOptions) {
   app.get('/api/public/demo-accounts', (c) => {
     if (!demo) throw notFound();
     const rows = all(db, `
-      SELECT u.email, u.name, u.role, c.name AS company, c.slug AS companySlug, p.name AS property
+      SELECT u.email, u.name, u.role, u.audit_access AS auditAccess, c.name AS company, c.slug AS companySlug, p.name AS property
         FROM users u JOIN companies c ON c.id = u.company_id LEFT JOIN properties p ON p.id = u.property_id
        WHERE u.id IN (
-         SELECT MIN(id) FROM users WHERE role IN ('company_admin','property_admin','manager','employee') GROUP BY company_id, role)
+         SELECT MIN(id) FROM users WHERE role IN ('company_admin','property_admin','manager','employee') AND audit_access IS NULL GROUP BY company_id, role)
+          OR u.id IN (SELECT MIN(id) FROM users WHERE audit_access IS NOT NULL GROUP BY company_id, audit_access)
        ORDER BY c.name, CASE u.role WHEN 'company_admin' THEN 1 WHEN 'property_admin' THEN 2 WHEN 'manager' THEN 3 ELSE 4 END`);
     return c.json({ password: 'staffhub-demo', accounts: rows });
   });
@@ -133,6 +143,8 @@ export function createApp({ db, demo = false }: AppOptions) {
       permissions: {
         manageBrand: ctx.role === 'company_admin' || ctx.role === 'property_admin',
         approveLeave: ctx.role !== 'employee',
+        nightAudit: hasAuditModule(ctx),
+        nightAuditRole: ctx.auditAccess,
       },
       theme: publishedTheme(db, ctx.companyId, ctx.propertyId),
     });
@@ -159,6 +171,7 @@ export function createApp({ db, demo = false }: AppOptions) {
   api.route('/employees', employeeRoutes);
   api.route('/dashboard', dashboardRoutes);
   api.route('/brand', brandRoutes);
+  api.route('/audit', auditRoutes);
   app.route('/api', api);
 
   return app;

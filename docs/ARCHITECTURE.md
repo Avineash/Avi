@@ -143,3 +143,50 @@ The guard test fails if a component reads a variable that isn't emitted.
 - **Not covered by automated contrast checks:** disabled controls (exempt in WCAG), text over user-uploaded images, and the content of the logo itself.
 - Orphaned uploaded images are not garbage-collected.
 - Dates are handled as UTC calendar days; time-zone-aware rostering is out of scope.
+
+## 6. Night audit module
+
+The night audit is a second module in the same application, not a second site. It reuses the session, the company → property tenancy,
+the permission model, the audit log and the design system, so a company's published brand applies to it automatically and the same
+isolation guarantees hold.
+
+### Where it lives
+- `packages/audit-core`: pure domain logic, no I/O: template schema and validation, progress and "next step", business-date rules
+  (the business date is the day after the audit date; before midday the working audit date is yesterday), card reconciliation in whole cents,
+  plain-text shift summary. Shared by the server (which enforces) and the web app (which previews).
+- `apps/server/src/audit/`: store (all rules), routes, upload checks. Tables: `audit_templates`, `audit_runs`, `audit_steps`, `audit_files`, `audit_ccrec`; `users.audit_access`.
+- `apps/web/src/audit/`: page, checklist, overview, card-rec tool, settings, `useAudit` (lock, heartbeat, polling).
+
+### Access: independent of the workforce role
+`users.audit_access` is `auditor | manager | both | null`, set by an administrator (property administrators for their own property, company
+administrators anywhere in the company). It is separate from `users.role`, so an employee can also be a night auditor without becoming an administrator,
+and an administrator needs no audit access to view. Audit roles belong to a property.
+
+| | view | start / tick / upload / close | take over | reopen closed | edit checklist, grant access |
+|---|---|---|---|---|---|
+| night auditor / both | own property | own property | yes | no | no |
+| night manager | own property | no | no | no | no |
+| property administrator | own property | no | no | own property | own property |
+| company administrator | every property | no | no | any property | any property |
+
+"Both" can switch to *manager mode* in the UI; that only ever reduces what the screen lets them do. The server decides from the stored role.
+
+### The edit lock
+Single-writer, per audit run. `POST /run/open` grants a lock when it is free, stale (no heartbeat for 90 s) or already the caller's, and returns a random
+token. Every write must carry the token in `X-Audit-Lock` **and** come from the user it was issued to (a lock is bound to its holder, not just to a secret).
+A takeover issues a new token, so the previous holder's next write fails with `409 locked` and the UI flips to read-only with an explanation.
+Readers poll every 8 s; holders heartbeat every 30 s and release on leaving the page.
+
+### Integrity rules
+- A run **snapshots** the checklist when it starts; editing the template (new version) never changes audits already started or closed.
+- Closing is final until an administrator reopens it. If steps are outstanding the caller must acknowledge and give a reason, stored on the run.
+- Files: type sniffed from bytes (PDF, PNG, JPEG, XLSX, CSV, TXT), 5 MB cap, 60 per audit, safe display names, served as `attachment` with
+  `nosniff` and `CSP: sandbox`, authenticated and scoped like the run, deleted after 7 days.
+- Another tenant's (or another property's) property, run, file, summary or template is a **404**, identical to a missing one.
+- Audit activity never writes to workforce tables; a test hashes leave, roster, notification and user tables before and after a full audit.
+
+### Extending it
+**A new tool** (e.g. daily operations forecast): add its pure logic to `audit-core`, a table or a JSON column keyed by `run_id`, two routes that call
+`requireLock` for writes, a component, and a tab. Reference it from a checklist step with `"tool": "<id>"`.
+Tools that only need a link (a payment portal, a reporting site) need no code: add the id under the template's `links`.
+**Importing PMS/POS exports** (the original tools parse XML/Excel): parse server-side into the same `CcRecData` shape; the maths and screens stay unchanged.

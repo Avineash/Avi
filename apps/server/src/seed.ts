@@ -4,6 +4,8 @@ import { hashPassword, type Ctx } from './auth.ts';
 import { publish, resolveScope, saveAsset, saveDraft, setPolicy } from './brand/store.ts';
 import { all, get, now, run, tx, type DB } from './db.ts';
 import { countWorkingDays, isoDate } from './leave.ts';
+import { allSteps, DEFAULT_TEMPLATE, emptyCcRec } from '@staffhub/audit-core';
+import { closeRun, openRun, putCcRec, release, updateMeta, updateStep } from './audit/store.ts';
 
 export const DEMO_PASSWORD = 'staffhub-demo';
 
@@ -139,6 +141,7 @@ export function seedDemo(db: DB, today = new Date()): void {
   });
 
   seedThemes(db);
+  seedAudit(db, today);
 }
 
 /** Publishes starter themes through the real store, exercising validation, the accessibility gate and version history. */
@@ -146,7 +149,7 @@ function seedThemes(db: DB) {
   for (const spec of COMPANIES) {
     const company = get<{ id: string }>(db, 'SELECT id FROM companies WHERE slug = ?', spec.slug)!;
     const admin = get<{ id: string; name: string; email: string }>(db, "SELECT id, name, email FROM users WHERE company_id = ? AND role = 'company_admin'", company.id)!;
-    const ctx: Ctx = { userId: admin.id, companyId: company.id, propertyId: null, departmentId: null, role: 'company_admin', name: admin.name, email: admin.email };
+    const ctx: Ctx = { userId: admin.id, companyId: company.id, propertyId: null, departmentId: null, role: 'company_admin', name: admin.name, email: admin.email, auditAccess: null };
     const preset = getPreset(spec.preset)!;
     const publishLayer = (layer: ThemeConfig, note: string) => {
       const s = resolveScope(db, ctx, 'company');
@@ -170,7 +173,7 @@ function seedThemes(db: DB) {
   // Aurora lets properties override identity *and* colours; the Alpine Lodge uses a forest-green variant of the brand.
   const aurora = get<{ id: string }>(db, "SELECT id FROM companies WHERE slug = 'aurora'")!;
   const admin = get<{ id: string; name: string; email: string }>(db, "SELECT id, name, email FROM users WHERE company_id = ? AND role = 'company_admin'", aurora.id)!;
-  const ctx: Ctx = { userId: admin.id, companyId: aurora.id, propertyId: null, departmentId: null, role: 'company_admin', name: admin.name, email: admin.email };
+  const ctx: Ctx = { userId: admin.id, companyId: aurora.id, propertyId: null, departmentId: null, role: 'company_admin', name: admin.name, email: admin.email, auditAccess: null };
   setPolicy(db, ctx, { identity: true, colors: true });
   const alpine = get<{ id: string }>(db, "SELECT id FROM properties WHERE company_id = ? AND slug = 'alpine'", aurora.id)!;
   const scope = resolveScope(db, ctx, alpine.id);
@@ -178,4 +181,46 @@ function seedThemes(db: DB) {
     colors: { light: { primary: '#2f5d3a', sidebarBg: '#1d3a26' }, dark: { primary: '#7fcf94', sidebarBg: '#0b1a10' } },
   }, scope.draft_revision).revision;
   publish(db, ctx, scope, { baseRevision: rev, note: 'Alpine Lodge forest-green variant' });
+}
+
+/**
+ * Night-audit demo data: a night auditor and a night manager at each company's first property, and a few past audits.
+ * Runs go through the real store functions (locks, validation, closing rules), so seeding doubles as a smoke test.
+ */
+function seedAudit(db: DB, today: Date) {
+  const day = (offset: number) => isoDate(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offset)));
+  const plan: Record<string, Array<{ offset: number; fraction: number; close: boolean; reason?: string }>> = {
+    aurora: [{ offset: -1, fraction: 1, close: true }, { offset: -2, fraction: 0.85, close: true, reason: 'Valet log unavailable: raised with the front office manager' }, { offset: -3, fraction: 1, close: true }, { offset: -4, fraction: 1, close: true }],
+    'maison-verde': [{ offset: -1, fraction: 0.45, close: false }, { offset: -2, fraction: 1, close: true }],
+    meridian: [{ offset: -1, fraction: 1, close: true }],
+  };
+  for (const co of db.prepare('SELECT id, slug FROM companies').all() as Array<{ id: string; slug: string }>) {
+    const prop = get<{ id: string }>(db, 'SELECT id FROM properties WHERE company_id = ? ORDER BY name LIMIT 1', co.id)!;
+    const fo = get<{ id: string }>(db, "SELECT id FROM departments WHERE property_id = ? AND name = 'Front Office'", prop.id)!;
+    const staff = all<{ id: string; name: string; email: string }>(db, "SELECT id, name, email FROM users WHERE department_id = ? AND role = 'employee' ORDER BY email", fo.id);
+    const mgr = get<{ id: string }>(db, "SELECT id FROM users WHERE department_id = ? AND role = 'manager'", fo.id)!;
+    run(db, "UPDATE users SET audit_access = 'auditor' WHERE id = ?", staff[0]!.id);
+    run(db, "UPDATE users SET audit_access = 'both' WHERE id = ?", staff[1]!.id);
+    run(db, "UPDATE users SET audit_access = 'manager' WHERE id = ?", mgr.id);
+
+    const a = staff[0]!;
+    const ctx: Ctx = { userId: a.id, companyId: co.id, propertyId: prop.id, departmentId: fo.id, role: 'employee', name: a.name, email: a.email, auditAccess: 'auditor' };
+    const steps = allSteps(DEFAULT_TEMPLATE);
+    for (const r of plan[co.slug] ?? []) {
+      const date = day(r.offset);
+      const opened = openRun(db, ctx, prop.id, date);
+      const token = opened.lockToken!, id = opened.run.id;
+      updateMeta(db, ctx, id, { nightManager: 'Night manager on duty' }, token);
+      steps.slice(0, Math.round(steps.length * r.fraction)).forEach(({ step }, i) => {
+        updateStep(db, ctx, id, step.id, { done: true, ...(step.subs ? { subs: step.subs.map((_, k) => k) } : {}), ...(i === 2 ? { note: 'Two early arrivals; keys prepared at the desk.' } : {}) }, token);
+      });
+      const cc = emptyCcRec();
+      cc.rows[0] = { card: 'Visa', pms: 412_350, terminalFo: 300_000, terminalFb: 112_350 };
+      cc.rows[1] = { card: 'Mastercard', pms: 198_000, terminalFo: 150_000, terminalFb: 48_000 };
+      cc.rows[2] = { card: 'Amex', pms: 86_425, terminalFo: 86_425, terminalFb: 0 };
+      putCcRec(db, ctx, id, cc, token);
+      if (r.close) closeRun(db, ctx, id, r.fraction < 1 ? { acknowledgeIncomplete: true, reason: r.reason } : {}, token);
+      else release(db, ctx, id, token);
+    }
+  }
 }
