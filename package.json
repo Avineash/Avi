@@ -1,0 +1,19 @@
+{
+  "name": "tableflow",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TableFlow — Scan. Order. Pay. Enjoy. Multi-tenant QR ordering & payments for Sri Lankan cafés.",
+  "workspaces": ["apps/*"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:api dev:web",
+    "dev:api": "npm run dev -w @tableflow/api",
+    "dev:web": "npm run dev -w @tableflow/web",
+    "build": "npm run build -w @tableflow/api && npm run build -w @tableflow/web",
+    "test": "npm run test -w @tableflow/api",
+    "seed": "npm run seed -w @tableflow/api",
+    "typecheck": "npm run typecheck -w @tableflow/api && npm run typecheck -w @tableflow/web",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": { "npm-run-all": "^4.1.5" }
+}
